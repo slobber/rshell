@@ -21,7 +21,6 @@ chrono = { version = "0.4", features = ["clock"] }
 eframe = { version = "0.37", default-features = false, features = [
     "accesskit",
     "clipboard",
-    "default_fonts",
     "glow",
     "links",
     "persistence",
@@ -101,7 +100,10 @@ rand = "0.10"
 resvg = { version = "0.45", default-features = false }
 
 [profile.release]
-lto = "thin"
+opt-level = "s"
+lto = "fat"
 codegen-units = 1
-strip = true
+panic = "abort"
+strip = "symbols"
+incremental = false
 
