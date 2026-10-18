@@ -1,0 +1,100 @@
+[package]
+name = "rshell"
+version = "0.1.0"
+edition = "2021"
+description = "RShell - a cross-platform SSH and SFTP workbench"
+license = "MIT"
+
+[lib]
+name = "rshell"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rshell"
+path = "src/main.rs"
+
+[dependencies]
+arboard = "3"
+argon2 = "0.6"
+chacha20poly1305 = "0.11"
+chrono = { version = "0.4", features = ["clock"] }
+eframe = { version = "0.37", default-features = false, features = [
+    "accesskit",
+    "clipboard",
+    "default_fonts",
+    "glow",
+    "links",
+    "persistence",
+    "system_fonts",
+    "wayland",
+    "x11",
+] }
+egui_extras = { version = "0.37", default-features = false, features = ["svg", "image"] }
+fontdb = "0.24"
+getrandom = "0.4"
+image = { version = "0.25", default-features = false, features = ["png"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
+rfd = "0.17"
+russh = { version = "0.64", default-features = false, features = [
+    "flate2",
+    "ring",
+    "rsa",
+] }
+russh-sftp = "3.0"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = [
+    "fs",
+    "io-util",
+    "net",
+    "rt-multi-thread",
+    "sync",
+    "time",
+] }
+toml = "1.1"
+vt100 = "0.16"
+portable-pty = "0.9"
+ironrdp-client = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b364a0282bab85087f658a81fe4207b6b31", package = "ironrdp-client", features = [
+    "clipboard",
+    "rdpdr",
+    "rustls",
+] }
+ironrdp-pdu = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b364a0282bab85087f658a81fe4207b6b31", package = "ironrdp-pdu" }
+smallvec = "1.15"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+ironrdp-rdpdr-native = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b364a0282bab85087f658a81fe4207b6b31", package = "ironrdp-rdpdr-native" }
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_LibraryLoader",
+    "Win32_System_WindowsProgramming",
+    "Win32_UI_Input",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+keyring = { version = "3", default-features = false, features = [
+    "sync-secret-service",
+    "crypto-rust",
+] }
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
+[dependencies.md-5]
+version = "0.11"
+
+[dev-dependencies]
+rand = "0.10"
+resvg = { version = "0.45", default-features = false }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+

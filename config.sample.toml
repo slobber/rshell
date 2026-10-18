@@ -1,0 +1,10 @@
+# RShell reads this file from one of these locations:
+# 1. The path in the RSHELL_CONFIG environment variable
+# 2. config.toml beside the executable
+# 3. ~/.config/rshell/config.toml
+#
+# Relative database paths are resolved from the directory containing this file.
+
+[storage]
+database = "~/.config/rshell/rshell.db"
+

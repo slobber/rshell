@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xshell Pro Suite 8 - [prod-k8s-node-01 (10.240.12.8:22)]</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with Forms and Container Queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "inverse-surface": "#e3e0f7",
+            "surface-container-lowest": "#0d0d1c",
+            "on-error": "#690005",
+            "on-tertiary-fixed": "#001f24",
+            "on-secondary-fixed-variant": "#57377f",
+            "surface-container-highest": "#333344",
+            "error-container": "#93000a",
+            "on-secondary-container": "#cda8fa",
+            "on-secondary": "#3f1e66",
+            "on-surface-variant": "#c3c6d2",
+            "secondary-container": "#593981",
+            "outline": "#8d919b",
+            "surface-container-high": "#292839",
+            "on-tertiary": "#00363d",
+            "primary": "#b5cfff",
+            "on-tertiary-container": "#004d56",
+            "tertiary": "#88dbea",
+            "inverse-on-surface": "#2f2f40",
+            "surface": "#121221",
+            "outline-variant": "#424750",
+            "error": "#ffb4ab",
+            "on-tertiary-fixed-variant": "#004f58",
+            "surface-container": "#1e1e2e",
+            "primary-container": "#89b4fa",
+            "background": "#121221",
+            "surface-variant": "#333344",
+            "on-primary-container": "#094583",
+            "secondary": "#d9b9ff",
+            "tertiary-fixed-dim": "#80d3e2",
+            "surface-container-low": "#1a1a2a",
+            "on-secondary-fixed": "#290350",
+            "surface-tint": "#a8c8ff",
+            "on-surface": "#e3e0f7",
+            "secondary-fixed": "#eedbff",
+            "tertiary-container": "#6cbfce",
+            "tertiary-fixed": "#9cefff",
+            "on-primary-fixed-variant": "#0e4685",
+            "on-primary-fixed": "#001b3c",
+            "on-primary": "#003062",
+            "on-error-container": "#ffdad6",
+            "secondary-fixed-dim": "#d9b9ff",
+            "inverse-primary": "#305f9f",
+            "primary-fixed-dim": "#a8c8ff",
+            "surface-bright": "#383849",
+            "surface-dim": "#121221",
+            "primary-fixed": "#d5e3ff",
+            "on-background": "#e3e0f7"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-xl": "1rem",
+            "gutter-desktop": "0.375rem",
+            "space-xs": "0.125rem",
+            "space-lg": "0.75rem",
+            "space-sm": "0.25rem",
+            "margin": "0.5rem",
+            "gutter": "0.25rem",
+            "space-md": "0.5rem",
+            "margin-desktop": "0.75rem"
+          },
+          "fontFamily": {
+            "body-compact": ["Geist", "sans-serif"],
+            "code-dense": ["JetBrains Mono", "monospace"],
+            "label-default": ["Geist", "sans-serif"],
+            "headline-sm": ["Geist", "sans-serif"],
+            "label-mono": ["JetBrains Mono", "monospace"],
+            "body-bold": ["Geist", "sans-serif"],
+            "headline-lg": ["Geist", "sans-serif"],
+            "code-default": ["JetBrains Mono", "monospace"],
+            "body-default": ["Geist", "sans-serif"]
+          },
+          "fontSize": {
+            "body-compact": ["0.75rem", { "lineHeight": "1rem", "fontWeight": "400" }],
+            "code-dense": ["0.75rem", { "lineHeight": "1.125rem", "fontWeight": "400" }],
+            "label-default": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "headline-sm": ["1rem", { "lineHeight": "1.375rem", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-mono": ["0.6875rem", { "lineHeight": "0.875rem", "letterSpacing": "0.01em", "fontWeight": "500" }],
+            "body-bold": ["0.8125rem", { "lineHeight": "1.1875rem", "fontWeight": "600" }],
+            "headline-lg": ["1.25rem", { "lineHeight": "1.75rem", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "code-default": ["0.8125rem", { "lineHeight": "1.25rem", "fontWeight": "400" }],
+            "body-default": ["0.8125rem", { "lineHeight": "1.1875rem", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Custom Scrollbar for Dense IDE Aesthetic */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #121221;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333344;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #424750;
+    }
+    .cursor-blink {
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface antialiased select-none overflow-hidden h-screen flex flex-col font-body-default text-body-default">
+<!-- ========================================================================= -->
+<!-- 1. TOP WINDOW FRAME & DENSE APPLICATION MENU BAR                          -->
+<!-- ========================================================================= -->
+<!-- Level 0 Top Window Title Bar -->
+<header class="bg-surface-container-lowest h-7 px-space-md flex items-center justify-between border-b border-outline-variant flex-shrink-0 text-on-surface-variant font-label-default text-label-default">
+<div class="flex items-center gap-space-sm overflow-hidden">
+<span class="material-symbols-outlined text-primary text-[15px]" data-icon="terminal">terminal</span>
+<span class="font-bold text-on-surface tracking-tight">ShellCore</span>
+<span class="text-outline">/</span>
+<span class="text-on-surface truncate">Xshell Pro Suite 8 - [prod-k8s-node-01 (10.240.12.8:22)]</span>
+<span class="inline-flex items-center px-1.5 py-0.2 bg-secondary-container text-on-secondary-container rounded text-[10px] font-label-mono ml-space-sm border border-outline-variant">PROD-ENV</span>
+</div>
+<!-- Quick Search, Status Badges and Native Window Controls -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center bg-surface-container-low px-2 py-0.5 rounded border border-outline-variant h-5.5">
+<span class="material-symbols-outlined text-outline text-[13px] mr-1" data-icon="search">search</span>
+<input class="bg-transparent border-0 p-0 text-[11px] font-label-default text-on-surface focus:ring-0 w-44 placeholder-outline" placeholder="Quick find action (Ctrl+P)..." type="text"/>
+<kbd class="text-[9px] font-label-mono bg-surface-container text-outline px-1 rounded border border-outline-variant ml-1">⌘P</kbd>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined hover:text-on-surface cursor-pointer text-[15px]" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined hover:text-on-surface cursor-pointer text-[15px]" data-icon="sync">sync</span>
+</div>
+<!-- Window min/max/close controls -->
+<div class="flex items-center ml-2 border-l border-outline-variant pl-2 gap-2 text-on-surface-variant">
+<button class="hover:bg-surface-container-high p-0.5 rounded text-on-surface-variant hover:text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]" data-icon="minimize">minimize</span>
+</button>
+<button class="hover:bg-surface-container-high p-0.5 rounded text-on-surface-variant hover:text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[13px]" data-icon="crop_square">crop_square</span>
+</button>
+<button class="hover:bg-error-container hover:text-on-error p-0.5 rounded text-on-surface-variant flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-[14px]" data-icon="close">close</span>
+</button>
+</div>
+</div>
+</header>
+<!-- TopNavBar (Shared Component Specification) -->
+<nav class="bg-surface-container flex justify-between items-center w-full px-space-md h-9 border-b border-outline-variant flex-shrink-0 text-label-default font-label-default">
+<!-- Menu Hierarchy & Navigation Links -->
+<div class="flex items-center gap-space-xs text-on-surface-variant">
+<div class="flex items-center gap-1.5 mr-2">
+<span class="text-headline-sm font-headline-sm font-bold text-primary tracking-tight">ShellCore</span>
+</div>
+<button class="px-space-sm py-1 rounded hover:bg-surface-container-high hover:text-on-surface text-primary font-bold border-b-2 border-primary pb-0.5 transition-colors duration-100 ease-in-out">File</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out">Edit</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out">View</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out">Operation</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out">Tools</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out">Window</button>
+<button class="px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-100 ease-in-out">Help</button>
+</div>
+<!-- Right Trailing Controls & Tools -->
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-0.5 text-on-surface-variant pr-space-sm border-r border-outline-variant">
+<button class="p-1 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center" title="Split Screen">
+<span class="material-symbols-outlined text-[17px]" data-icon="splitscreen">splitscreen</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center" title="Terminal View">
+<span class="material-symbols-outlined text-[17px]" data-icon="terminal">terminal</span>
+</button>
+<button class="p-1 rounded text-primary hover:bg-surface-container-high transition-colors flex items-center" title="Sync Input to Tabs">
+<span class="material-symbols-outlined text-[17px]" data-icon="sync_alt">sync_alt</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center" title="Execute Macro/Script">
+<span class="material-symbols-outlined text-[17px]" data-icon="play_arrow">play_arrow</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center" title="Zoom in Font">
+<span class="material-symbols-outlined text-[17px]" data-icon="zoom_in">zoom_in</span>
+</button>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="px-2.5 py-1 text-[11px] font-semibold bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded border border-outline-variant transition-colors">
+          New Session
+        </button>
+<button class="px-2.5 py-1 text-[11px] font-semibold bg-primary-container hover:bg-primary text-on-primary-container rounded transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="bolt">bolt</span>
+          Quick Connect
+        </button>
+</div>
+</div>
+</nav>
+<!-- Secondary Quick Execution Ribbon Bar -->
+<div class="bg-surface-container-low h-7 px-space-md flex items-center justify-between border-b border-outline-variant flex-shrink-0 text-label-default font-label-default">
+<div class="flex items-center gap-1">
+<div class="flex items-center bg-surface-container-lowest px-2 py-0.5 rounded border border-outline-variant mr-1">
+<span class="material-symbols-outlined text-primary text-[14px] mr-1" data-icon="lan">lan</span>
+<span class="font-label-mono text-[11px] text-on-surface mr-2">root@10.240.12.8:22</span>
+<span class="material-symbols-outlined text-outline text-[12px] cursor-pointer" data-icon="arrow_drop_down">arrow_drop_down</span>
+</div>
+<button class="p-1 rounded hover:bg-surface-container-high text-tertiary flex items-center" title="Connect">
+<span class="material-symbols-outlined text-[15px]" data-icon="power">power</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container-high text-outline hover:text-error flex items-center" title="Disconnect">
+<span class="material-symbols-outlined text-[15px]" data-icon="power_off">power_off</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant flex items-center" title="Reconnect">
+<span class="material-symbols-outlined text-[15px]" data-icon="refresh">refresh</span>
+</button>
+<span class="w-[1px] h-3.5 bg-outline-variant mx-1"></span>
+<button class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant flex items-center" title="Split Horizontal">
+<span class="material-symbols-outlined text-[15px]" data-icon="table_rows">table_rows</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant flex items-center" title="Split Vertical">
+<span class="material-symbols-outlined text-[15px]" data-icon="view_column">view_column</span>
+</button>
+<button class="px-1.5 py-0.5 rounded bg-surface-container text-primary border border-outline-variant flex items-center gap-1 text-[10px]" title="Broadcast Input to all active sessions">
+<span class="material-symbols-outlined text-[13px]" data-icon="podcasts">podcasts</span>
+<span>Broadcast: OFF</span>
+</button>
+<span class="w-[1px] h-3.5 bg-outline-variant mx-1"></span>
+<button class="px-2 py-0.5 rounded hover:bg-surface-container-high text-on-surface-variant flex items-center gap-1 text-[11px] font-label-default" title="Xftp File Manager Integration">
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="folder_shared">folder_shared</span>
+<span>Xftp Dual-Pane</span>
+</button>
+<button class="px-2 py-0.5 rounded hover:bg-surface-container-high text-on-surface-variant flex items-center gap-1 text-[11px] font-label-default" title="Snippet Library">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="code">code</span>
+<span>Snippets</span>
+</button>
+<button class="px-2 py-0.5 rounded hover:bg-surface-container-high text-on-surface-variant flex items-center gap-1 text-[11px] font-label-default" title="Key &amp; Identity Ring">
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="vpn_key">vpn_key</span>
+<span>Keyring</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-outline font-label-mono text-[10px]">
+<span class="flex items-center gap-1">
+<span class="inline-block w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+        Enc: AES-256-GCM
+      </span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="speed">speed</span>
+        22ms (HK-Bastion)
+      </span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" data-icon="memory">memory</span>
+        Buffer: 128KB
+      </span>
+</div>
+</div>
+<!-- ========================================================================= -->
+<!-- MAIN WORKSPACE: SIDEBAR + DUAL SPLIT PANES (SSH & SFTP)                  -->
+<!-- ========================================================================= -->
+<div class="flex flex-1 overflow-hidden">
+<!-- 2. LEFT SIDEBAR: HOST & SESSION MANAGER (SideNavBar blueprint) -->
+<aside class="bg-surface-container-low w-60 border-r border-outline-variant flex flex-col justify-between flex-shrink-0 select-none">
+<!-- Session Manager Header -->
+<div class="flex flex-col">
+<div class="flex items-center justify-between px-space-md py-1.5 border-b border-outline-variant bg-surface-container">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[17px]" data-icon="dns">dns</span>
+<div>
+<div class="text-label-default font-semibold text-on-surface">Session Manager</div>
+<div class="text-[10px] text-outline font-label-mono leading-none">4 Clusters Active</div>
+</div>
+</div>
+<button class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant flex items-center" title="Collapse Rail">
+<span class="material-symbols-outlined text-[15px]" data-icon="first_page">first_page</span>
+</button>
+</div>
+<!-- Filter and Action Toolbar -->
+<div class="p-space-sm border-b border-outline-variant space-y-1">
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-2 py-0.5 pl-6 text-[11px] font-label-default text-on-surface focus:outline-none focus:border-primary placeholder-outline h-6" placeholder="搜索主机名/IP..." type="text"/>
+<span class="material-symbols-outlined absolute left-1.5 top-1 text-outline text-[13px]" data-icon="filter_list">filter_list</span>
+</div>
+<div class="flex items-center gap-1 pt-0.5">
+<button class="flex-1 bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant rounded py-0.5 text-[10px] font-label-default flex items-center justify-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[12px] text-primary" data-icon="add">add</span>
+              Add Host
+            </button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant rounded px-1.5 py-0.5 text-[10px] font-label-default flex items-center justify-center" title="新建文件夹">
+<span class="material-symbols-outlined text-[12px]" data-icon="create_new_folder">create_new_folder</span>
+</button>
+<button class="bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant rounded px-1.5 py-0.5 text-[10px] font-label-default flex items-center justify-center" title="刷新列表">
+<span class="material-symbols-outlined text-[12px]" data-icon="refresh">refresh</span>
+</button>
+</div>
+</div>
+<!-- SideNavBar Tabs (Shared Component) -->
+<div class="flex items-center border-b border-outline-variant bg-surface-container-low text-[10px] font-label-default">
+<button class="flex-1 py-1 text-center bg-surface-container-highest text-primary border-l-2 border-primary font-semibold flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[13px]" data-icon="dns">dns</span>
+            Hosts
+          </button>
+<button class="flex-1 py-1 text-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[13px]" data-icon="vpn_lock">vpn_lock</span>
+            Tunnels
+          </button>
+<button class="flex-1 py-1 text-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[13px]" data-icon="swap_vert">swap_vert</span>
+            SFTP Queue
+          </button>
+</div>
+<!-- Expandable Host Tree View -->
+<div class="p-1 overflow-y-auto max-h-[calc(100vh-21rem)] space-y-0.5 font-label-default">
+<!-- Folder: Prod K8s Cluster -->
+<div>
+<div class="flex items-center gap-1 px-1.5 py-0.5 rounded text-on-surface hover:bg-surface-container cursor-pointer font-medium text-[11px]">
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="expand_more">expand_more</span>
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="folder_open">folder_open</span>
+<span class="truncate">生产集群 (Prod K8s Cluster)</span>
+</div>
+<div class="ml-3 pl-2 border-l border-outline-variant space-y-0.5">
+<!-- Item 1 -->
+<div class="flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-surface-container text-on-surface cursor-pointer text-[11px] group">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span class="truncate">prod-k8s-master-01</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="font-label-mono text-[9px] text-outline">18ms</span>
+<span class="text-[9px] font-label-mono px-1 bg-surface-container rounded text-outline border border-outline-variant">KEY</span>
+</div>
+</div>
+<!-- Item 2 (Active) -->
+<div class="flex items-center justify-between px-1.5 py-0.5 rounded bg-surface-container-highest text-primary border-l-2 border-primary font-medium cursor-pointer text-[11px]">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
+<span class="truncate">prod-k8s-node-01</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="font-label-mono text-[9px] text-tertiary font-bold">22ms</span>
+<span class="text-[9px] font-label-mono px-1 bg-primary text-on-primary-container rounded font-bold">ACTIVE</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-surface-container text-on-surface cursor-pointer text-[11px]">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span class="truncate">prod-k8s-node-02</span>
+</div>
+<span class="font-label-mono text-[9px] text-outline">24ms</span>
+</div>
+<!-- Subfolder: DB Instances -->
+<div>
+<div class="flex items-center gap-1 px-1 py-0.5 rounded text-on-surface-variant hover:bg-surface-container cursor-pointer text-[11px]">
+<span class="material-symbols-outlined text-outline text-[13px]" data-icon="expand_more">expand_more</span>
+<span class="material-symbols-outlined text-outline text-[13px]" data-icon="folder">folder</span>
+<span class="truncate">数据库节点 (DB Instances)</span>
+</div>
+<div class="ml-3 pl-2 border-l border-outline-variant space-y-0.5">
+<div class="flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-surface-container text-on-surface cursor-pointer text-[11px]">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="truncate">prod-pg-primary</span>
+</div>
+<span class="font-label-mono text-[9px] text-outline">35ms</span>
+</div>
+<div class="flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-surface-container text-outline cursor-pointer text-[11px]">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+<span class="truncate">prod-pg-replica-01</span>
+</div>
+<span class="font-label-mono text-[9px] text-outline-variant">OFFLINE</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Folder: Staging & QA (Collapsed) -->
+<div class="flex items-center justify-between px-1.5 py-0.5 rounded text-on-surface-variant hover:bg-surface-container cursor-pointer text-[11px]">
+<div class="flex items-center gap-1 truncate">
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="chevron_right">chevron_right</span>
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="folder">folder</span>
+<span class="truncate">测试环境 (Staging &amp; QA)</span>
+</div>
+<span class="text-[9px] font-label-mono text-outline">6 hosts</span>
+</div>
+<!-- Folder: Bastion & Gateways -->
+<div>
+<div class="flex items-center gap-1 px-1.5 py-0.5 rounded text-on-surface hover:bg-surface-container cursor-pointer text-[11px]">
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="expand_more">expand_more</span>
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="folder_open">folder_open</span>
+<span class="truncate">跳板机 (Bastion &amp; Gateways)</span>
+</div>
+<div class="ml-3 pl-2 border-l border-outline-variant space-y-0.5">
+<div class="flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-surface-container text-on-surface cursor-pointer text-[11px]">
+<div class="flex items-center gap-1.5 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span class="truncate">bastion-hk-01</span>
+</div>
+<span class="font-label-mono text-[9px] text-tertiary">42ms</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Session Properties Inspector -->
+<div class="border-t border-outline-variant bg-surface-container p-2 font-label-mono text-[10px]">
+<div class="flex items-center justify-between text-outline mb-1 font-label-default font-semibold text-[11px]">
+<span>PROPERTIES: ACTIVE</span>
+<span class="material-symbols-outlined text-[13px]" data-icon="tune">tune</span>
+</div>
+<div class="space-y-1 text-on-surface-variant">
+<div class="flex justify-between"><span class="text-outline">Host:</span> <span class="text-on-surface font-semibold">10.240.12.8</span></div>
+<div class="flex justify-between"><span class="text-outline">Port / Proto:</span> <span>22 (SSH-2)</span></div>
+<div class="flex justify-between"><span class="text-outline">User:</span> <span>root</span></div>
+<div class="flex justify-between"><span class="text-outline">Key:</span> <span class="text-tertiary">id_ed25519_prod</span></div>
+<div class="flex justify-between"><span class="text-outline">Gateway:</span> <span>bastion-hk-01</span></div>
+<div class="flex justify-between"><span class="text-outline">Keep-Alive:</span> <span>30s (server)</span></div>
+</div>
+</div>
+<!-- Footer Tab Labels (SideNavBar Shared Specification) -->
+<div class="border-t border-outline-variant bg-surface-container-low px-2 py-1 flex items-center justify-around text-label-default text-[11px]">
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-on-surface py-0.5 px-2 rounded hover:bg-surface-container">
+<span class="material-symbols-outlined text-[14px]" data-icon="settings">settings</span>
+<span>Settings</span>
+</button>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-on-surface py-0.5 px-2 rounded hover:bg-surface-container">
+<span class="material-symbols-outlined text-[14px]" data-icon="key">key</span>
+<span>Keyring</span>
+</button>
+</div>
+</aside>
+<!-- 3. MAIN SPLIT-PANE WORKSPACE -->
+<main class="flex-1 flex flex-col min-w-0 bg-surface">
+<!-- Workbench Horizontal Split Body -->
+<div class="flex-1 flex min-h-0 overflow-hidden">
+<!-- LEFT WORKSPACE PANE: INTERACTIVE SSH TERMINAL GROUP (52% width) -->
+<section class="w-[52%] flex flex-col border-r border-outline-variant bg-surface-container-lowest">
+<!-- Terminal Group Tab Bar -->
+<div class="h-8 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-space-xs flex-shrink-0">
+<div class="flex items-center h-full overflow-x-auto gap-0.5">
+<!-- Active Tab -->
+<div class="h-full bg-surface-container text-on-surface px-space-md flex items-center gap-1.5 border-t-2 border-primary border-r border-outline-variant cursor-pointer text-label-default text-[11px] font-medium min-w-[170px] max-w-[210px]">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse flex-shrink-0"></span>
+<span class="material-symbols-outlined text-[13px] text-outline" data-icon="lock">lock</span>
+<span class="truncate">prod-k8s-node-01 (root)</span>
+<button class="ml-auto text-outline hover:text-error flex items-center p-0.5">
+<span class="material-symbols-outlined text-[12px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Inactive Tab 1 -->
+<div class="h-full bg-surface-container-low text-on-surface-variant hover:text-on-surface px-space-md flex items-center gap-1.5 border-r border-outline-variant cursor-pointer text-label-default text-[11px] min-w-[160px] max-w-[200px]">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary flex-shrink-0"></span>
+<span class="truncate">prod-k8s-master-01 (ops)</span>
+<button class="ml-auto text-outline hover:text-error flex items-center p-0.5">
+<span class="material-symbols-outlined text-[12px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Inactive Tab 2 -->
+<div class="h-full bg-surface-container-low text-on-surface-variant hover:text-on-surface px-space-md flex items-center gap-1.5 border-r border-outline-variant cursor-pointer text-label-default text-[11px] min-w-[150px]">
+<span class="material-symbols-outlined text-[13px] text-secondary" data-icon="vpn_lock">vpn_lock</span>
+<span class="truncate">bastion-hk-01</span>
+<button class="ml-auto text-outline hover:text-error flex items-center p-0.5">
+<span class="material-symbols-outlined text-[12px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Add tab -->
+<button class="p-1 rounded hover:bg-surface-container text-outline hover:text-on-surface ml-1" title="New Terminal Tab">
+<span class="material-symbols-outlined text-[14px]" data-icon="add">add</span>
+</button>
+</div>
+<!-- Terminal Pane Tools -->
+<div class="flex items-center gap-1 text-outline pr-1">
+<button class="p-1 hover:text-on-surface hover:bg-surface-container rounded" title="Find in Terminal">
+<span class="material-symbols-outlined text-[14px]" data-icon="search">search</span>
+</button>
+<button class="p-1 hover:text-on-surface hover:bg-surface-container rounded" title="Split Right">
+<span class="material-symbols-outlined text-[14px]" data-icon="vertical_split">vertical_split</span>
+</button>
+<button class="p-1 hover:text-on-surface hover:bg-surface-container rounded" title="Maximize Console">
+<span class="material-symbols-outlined text-[14px]" data-icon="open_in_full">open_in_full</span>
+</button>
+</div>
+</div>
+<!-- Terminal Content Viewport -->
+<div class="flex-1 p-space-md font-code-dense text-code-dense overflow-y-auto text-on-surface bg-surface-container-lowest leading-relaxed select-text">
+<!-- System Welcome Banner & Metrics -->
+<div class="text-outline mb-2">
+<span class="text-primary font-bold">Linux prod-k8s-node-01 6.5.0-44-generic #44~22.04.1-Ubuntu SMP x86_64</span><br/>
+<span>System load:  0.42, 0.38, 0.29  |  Uptime: 142 days, 4:18:22  |  Processes: 284</span><br/>
+<span>Memory Usage: 18.4GB / 64.0GB [28.7%]  |  Swap: 0%  |  Disk rootfs: 41% utilized</span>
+</div>
+<div class="mb-2 p-1.5 bg-surface-container-low border border-outline-variant rounded font-label-mono text-[11px] flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span>CPU: <strong class="text-tertiary">14.2%</strong> [||||||....]</span>
+<span>MEM: <strong class="text-secondary">28.7%</strong> [|||||||||.]</span>
+<span>NET RX: <strong class="text-on-surface">14.8 MB/s</strong></span>
+<span>NET TX: <strong class="text-on-surface">32.1 MB/s</strong></span>
+</div>
+<span class="text-outline text-[10px]">cluster: ap-east-prod-k8s</span>
+</div>
+<!-- Command 1: kubectl get pods -->
+<div class="mt-2 text-on-surface">
+<span class="text-tertiary font-bold">root@prod-k8s-node-01</span>:<span class="text-primary">~</span># kubectl get pods -n ingress-nginx -o wide
+            </div>
+<!-- Tabular Output -->
+<div class="mt-1 font-code-dense text-[11px] leading-tight text-on-surface-variant overflow-x-auto whitespace-pre">
+NAME                                       READY   STATUS    RESTARTS   AGE   IP            NODE
+ingress-nginx-controller-7489dfb-c8x4l     1/1     <span class="text-tertiary">Running</span>   0          18d   10.244.2.14   prod-k8s-node-01
+ingress-nginx-controller-7489dfb-f92pk     1/1     <span class="text-tertiary">Running</span>   0          18d   10.244.3.82   prod-k8s-node-02
+ingress-nginx-defaultbackend-56f8-v8s2q    1/1     <span class="text-tertiary">Running</span>   0          42d   10.244.2.19   prod-k8s-node-01
+nginx-error-page-router-9b4d-km2z9         1/1     <span class="text-tertiary">Running</span>   1 (12d)    34d   10.244.2.33   prod-k8s-node-01</div>
+<!-- Command 2: Htop Snapshot Diagnostics -->
+<div class="mt-3 text-on-surface">
+<span class="text-tertiary font-bold">root@prod-k8s-node-01</span>:<span class="text-primary">~</span># ps aux --sort=-%mem | head -n 6
+            </div>
+<div class="mt-1 font-code-dense text-[11px] text-on-surface-variant overflow-x-auto whitespace-pre">
+USER       PID  %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root      1204   8.2  9.4 4892404 618420 ?     Ssl  Jan11 2140:12 /usr/bin/containerd
+root      2891  14.1  6.2 3810248 409110 ?     Sl   Jan11 4118:50 kubelet --config=/var/lib/kubelet/config.yaml
+root      9142   1.4  4.8 1982004 314560 ?     S    Feb10  190:42 /usr/local/bin/envoy -c /etc/envoy.yaml
+101      18440   2.8  2.1  892300 141020 ?     S    Feb20   84:11 nginx: worker process
+root     31982   0.0  0.8  412980  56200 pts/0  S+   14:20   0:01 htop -d 10</div>
+<!-- Command 3: Real-time Interactive Prompt with Blinking Cursor -->
+<div class="mt-3 text-on-surface flex items-center">
+<span class="text-tertiary font-bold">root@prod-k8s-node-01</span>:<span class="text-primary">/etc/nginx/conf.d</span># 
+              <span class="ml-1 text-on-surface font-code-dense">tail -f /var/log/nginx/access.log | grep --line-buffered "502"</span>
+<span class="inline-block w-2 h-4 bg-primary ml-0.5 cursor-blink"></span>
+</div>
+</div>
+<!-- Terminal Bottom Status Strip -->
+<div class="h-5 bg-surface-container border-t border-outline-variant px-space-md flex items-center justify-between text-outline font-label-mono text-[10px]">
+<div class="flex items-center gap-3">
+<span class="text-primary">SSH-2.0 (UTF-8)</span>
+<span>VT100 / xterm-256color</span>
+<span>Cols: 118, Rows: 34</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-tertiary">PING: 22.4ms</span>
+<span>LOG: ACTIVE</span>
+<span>BELL: AUDIBLE</span>
+</div>
+</div>
+</section>
+<!-- SASH DIVIDER HANDLE -->
+<div class="w-1 bg-surface-container-high hover:bg-primary-container cursor-col-resize transition-colors flex items-center justify-center flex-shrink-0 group">
+<div class="w-0.5 h-6 bg-outline group-hover:bg-primary rounded"></div>
+</div>
+<!-- RIGHT WORKSPACE PANE: XFTP DUAL-PANE FILE TRANSFER GROUP (48% width) -->
+<section class="flex-1 flex flex-col min-w-0 bg-surface-container-lowest">
+<!-- SFTP Group Tab Bar -->
+<div class="h-8 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-space-xs flex-shrink-0">
+<div class="flex items-center h-full gap-0.5">
+<!-- Active SFTP Tab -->
+<div class="h-full bg-surface-container text-on-surface px-space-md flex items-center gap-1.5 border-t-2 border-secondary border-r border-outline-variant cursor-pointer text-label-default text-[11px] font-medium min-w-[210px]">
+<span class="material-symbols-outlined text-[14px] text-secondary" data-icon="folder_shared">folder_shared</span>
+<span class="truncate">SFTP: prod-k8s-node-01 (/etc/nginx)</span>
+<button class="ml-auto text-outline hover:text-error flex items-center p-0.5">
+<span class="material-symbols-outlined text-[12px]" data-icon="close">close</span>
+</button>
+</div>
+<!-- Secondary Session Tab -->
+<div class="h-full bg-surface-container-low text-on-surface-variant hover:text-on-surface px-space-md flex items-center gap-1.5 border-r border-outline-variant cursor-pointer text-label-default text-[11px] min-w-[150px]">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span class="truncate">db-monitor (top)</span>
+<button class="ml-auto text-outline hover:text-error flex items-center p-0.5">
+<span class="material-symbols-outlined text-[12px]" data-icon="close">close</span>
+</button>
+</div>
+</div>
+<!-- SFTP Queue Badge & Quick Toolbar -->
+<div class="flex items-center gap-1 text-outline pr-1">
+<span class="px-1.5 py-0.5 bg-surface-container text-secondary rounded font-label-mono text-[10px] border border-outline-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-tertiary" data-icon="swap_vert">swap_vert</span>
+                Queue: 3 Active
+              </span>
+<button class="p-1 hover:text-on-surface hover:bg-surface-container rounded" title="Sync Browsing Folders">
+<span class="material-symbols-outlined text-[14px]" data-icon="sync">sync</span>
+</button>
+<button class="p-1 hover:text-on-surface hover:bg-surface-container rounded" title="Folder Comparison">
+<span class="material-symbols-outlined text-[14px]" data-icon="difference">difference</span>
+</button>
+</div>
+</div>
+<!-- Dual-Column Xftp Explorer Container -->
+<div class="flex-1 flex min-h-0">
+<!-- LEFT COLUMN: LOCAL MACHINE BROWSER -->
+<div class="flex-1 flex flex-col border-r border-outline-variant bg-surface-container-low min-w-0">
+<!-- Local Breadcrumb & Header -->
+<div class="p-1.5 border-b border-outline-variant bg-surface-container flex items-center justify-between text-label-default text-[11px]">
+<div class="flex items-center gap-1 truncate text-on-surface">
+<span class="material-symbols-outlined text-[14px] text-outline" data-icon="laptop_windows">laptop_windows</span>
+<span class="font-semibold text-tertiary">本地:</span>
+<span class="truncate font-label-mono text-[10px]">D:\DevOps\Configs\nginx</span>
+</div>
+<div class="flex items-center gap-0.5 text-outline">
+<button class="p-0.5 hover:text-on-surface hover:bg-surface-container-high rounded" title="Up One Level">
+<span class="material-symbols-outlined text-[13px]" data-icon="arrow_upward">arrow_upward</span>
+</button>
+<button class="p-0.5 hover:text-on-surface hover:bg-surface-container-high rounded" title="Refresh">
+<span class="material-symbols-outlined text-[13px]" data-icon="refresh">refresh</span>
+</button>
+</div>
+</div>
+<!-- Local File Explorer Table -->
+<div class="flex-1 overflow-y-auto">
+<table class="w-full text-left font-label-default text-[11px] text-on-surface-variant">
+<thead class="bg-surface-container-lowest text-outline text-[10px] font-label-mono sticky top-0 border-b border-outline-variant">
+<tr>
+<th class="py-1 px-2 font-medium">Name</th>
+<th class="py-1 px-1.5 font-medium text-right">Size</th>
+<th class="py-1 px-1.5 font-medium">Modified</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/40">
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="drive_folder_upload">drive_folder_upload</span>
+<span>..</span>
+</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">&lt;DIR&gt;</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">--</td>
+</tr>
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="folder">folder</span>
+<span class="truncate">ssl-certs</span>
+</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">&lt;DIR&gt;</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">2025-02-18 10:20</td>
+</tr>
+<!-- Selected Local Row -->
+<tr class="bg-surface-container-highest text-primary cursor-pointer border-l-2 border-primary">
+<td class="py-1 px-2 flex items-center gap-1 font-medium">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="description">description</span>
+<span class="truncate">app-proxy.conf</span>
+</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px]">42.8 KB</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px]">2025-02-23 14:15</td>
+</tr>
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="description">description</span>
+<span class="truncate">ingress-rules.yaml</span>
+</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">18.4 KB</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">2025-02-21 09:30</td>
+</tr>
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="archive">archive</span>
+<span class="truncate">nginx-backup-v2.tar.gz</span>
+</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">3.8 MB</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">2025-02-19 16:44</td>
+</tr>
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="description">description</span>
+<span class="truncate">upstream-gateway.conf</span>
+</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">5.1 KB</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">2025-02-14 11:10</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- CENTER ACTION COLUMN: TRANSFER TOGGLES -->
+<div class="w-10 bg-surface-container border-r border-outline-variant flex flex-col items-center justify-center gap-2 flex-shrink-0 p-1">
+<button class="w-7 h-7 rounded bg-primary-container hover:bg-primary text-on-primary-container flex items-center justify-center shadow transition-colors" title="上传所选文件到远程 (Upload)">
+<span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="w-7 h-7 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center border border-outline-variant transition-colors" title="下载所选远程文件 (Download)">
+<span class="material-symbols-outlined text-[16px]" data-icon="arrow_back">arrow_back</span>
+</button>
+<span class="w-4 h-[1px] bg-outline-variant my-1"></span>
+<button class="w-7 h-7 rounded hover:bg-surface-container-high text-outline hover:text-on-surface flex items-center justify-center" title="自动双向同步">
+<span class="material-symbols-outlined text-[15px]" data-icon="sync_alt">sync_alt</span>
+</button>
+</div>
+<!-- RIGHT COLUMN: REMOTE SFTP BROWSER -->
+<div class="flex-1 flex flex-col bg-surface-container-low min-w-0">
+<!-- Remote Breadcrumb & Header -->
+<div class="p-1.5 border-b border-outline-variant bg-surface-container flex items-center justify-between text-label-default text-[11px]">
+<div class="flex items-center gap-1 truncate text-on-surface">
+<span class="material-symbols-outlined text-[14px] text-tertiary" data-icon="cloud">cloud</span>
+<span class="font-semibold text-secondary">远程:</span>
+<span class="truncate font-label-mono text-[10px]">/etc/nginx/conf.d/</span>
+</div>
+<div class="flex items-center gap-0.5 text-outline">
+<button class="p-0.5 hover:text-on-surface hover:bg-surface-container-high rounded" title="Up One Level">
+<span class="material-symbols-outlined text-[13px]" data-icon="arrow_upward">arrow_upward</span>
+</button>
+<button class="p-0.5 hover:text-on-surface hover:bg-surface-container-high rounded" title="Remote Refresh">
+<span class="material-symbols-outlined text-[13px]" data-icon="refresh">refresh</span>
+</button>
+</div>
+</div>
+<!-- Remote File Explorer Table -->
+<div class="flex-1 overflow-y-auto">
+<table class="w-full text-left font-label-default text-[11px] text-on-surface-variant">
+<thead class="bg-surface-container-lowest text-outline text-[10px] font-label-mono sticky top-0 border-b border-outline-variant">
+<tr>
+<th class="py-1 px-2 font-medium">Name</th>
+<th class="py-1 px-1 font-medium">Perm</th>
+<th class="py-1 px-1 font-medium">Owner</th>
+<th class="py-1 px-1.5 font-medium text-right">Size</th>
+<th class="py-1 px-1.5 font-medium">Date</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/40">
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-outline text-[14px]" data-icon="drive_folder_upload">drive_folder_upload</span>
+<span>..</span>
+</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">drwxr-xr-x</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">root:root</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">4.0K</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">Feb 23 11:00</td>
+</tr>
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="folder">folder</span>
+<span class="truncate">certs</span>
+</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">drwx------</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">root:root</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">4.0K</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">Jan 12 03:15</td>
+</tr>
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="description">description</span>
+<span class="truncate">default.conf</span>
+</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">-rw-r--r--</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">root:root</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">1.1 KB</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">Jan 11 18:22</td>
+</tr>
+<tr class="hover:bg-surface-container cursor-pointer">
+<td class="py-1 px-2 flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-primary text-[14px]" data-icon="description">description</span>
+<span class="truncate">k8s-ingress.conf</span>
+</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">-rw-r--r--</td>
+<td class="py-1 px-1 font-label-mono text-[10px] text-outline">root:root</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px] text-outline">12.3 KB</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px] text-outline">Feb 20 14:02</td>
+</tr>
+<!-- Remote Item Selected -->
+<tr class="bg-surface-container-highest text-secondary cursor-pointer border-l-2 border-secondary">
+<td class="py-1 px-2 flex items-center gap-1 font-medium">
+<span class="material-symbols-outlined text-secondary text-[14px]" data-icon="archive">archive</span>
+<span class="truncate">access.log.2025-02-23.gz</span>
+</td>
+<td class="py-1 px-1 font-label-mono text-[10px]">-rw-r-----</td>
+<td class="py-1 px-1 font-label-mono text-[10px]">www-data</td>
+<td class="py-1 px-1.5 text-right font-label-mono text-[10px]">14.2 MB</td>
+<td class="py-1 px-1.5 font-label-mono text-[10px]">Today 14:00</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- SFTP Bottom Direct Actions Toolbar -->
+<div class="h-6 bg-surface-container border-t border-outline-variant px-space-md flex items-center justify-between text-label-default text-[10px]">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span>Selected: <strong class="text-on-surface">access.log.2025-02-23.gz (14.2 MB)</strong></span>
+</div>
+<div class="flex items-center gap-1">
+<button class="px-1.5 py-0.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant">直接编辑 (F4)</button>
+<button class="px-1.5 py-0.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant">chmod 权限</button>
+<button class="px-1.5 py-0.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant">MD5 校验</button>
+</div>
+</div>
+</section>
+</div>
+<!-- ========================================================================= -->
+<!-- 4. BOTTOM DOCKED PANEL - OUTPUT & ACTIVITY LOG CONSOLE                    -->
+<!-- ========================================================================= -->
+<footer class="h-36 bg-surface-container-lowest border-t border-outline-variant flex flex-col flex-shrink-0">
+<!-- Output Panel Control Header -->
+<div class="h-7 bg-surface-container px-space-md flex items-center justify-between border-b border-outline-variant flex-shrink-0 font-label-default text-label-default">
+<div class="flex items-center h-full gap-1">
+<!-- Active Log Tab -->
+<button class="h-full px-2.5 bg-surface-container-highest text-primary border-t-2 border-primary font-semibold flex items-center gap-1.5 text-[11px]">
+<span class="material-symbols-outlined text-[13px]" data-icon="description">description</span>
+<span>会话连接日志 (当前: prod-k8s-node-01)</span>
+</button>
+<!-- Transfer Queue Tab -->
+<button class="h-full px-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 text-[11px]">
+<span class="material-symbols-outlined text-[13px] text-tertiary" data-icon="rocket_launch">rocket_launch</span>
+<span>传输任务队列 (2完成 / 1传输中)</span>
+</button>
+<!-- Port Forwarding Tab -->
+<button class="h-full px-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 text-[11px]">
+<span class="material-symbols-outlined text-[13px] text-secondary" data-icon="settings_ethernet">settings_ethernet</span>
+<span>端口转发状态 (Local:1080 -&gt; 10.240.0.1:22)</span>
+</button>
+</div>
+<!-- Console Quick Tools -->
+<div class="flex items-center gap-2 text-outline text-[11px]">
+<label class="flex items-center gap-1 cursor-pointer select-none text-[10px]">
+<input checked="" class="rounded border-outline-variant bg-surface-container-lowest text-primary text-[10px] focus:ring-0" type="checkbox"/>
+<span>Auto-scroll</span>
+</label>
+<button class="p-0.5 hover:text-on-surface hover:bg-surface-container-high rounded flex items-center" title="Clear Console">
+<span class="material-symbols-outlined text-[14px]" data-icon="delete_sweep">delete_sweep</span>
+</button>
+<button class="p-0.5 hover:text-on-surface hover:bg-surface-container-high rounded flex items-center" title="Collapse Output">
+<span class="material-symbols-outlined text-[14px]" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Telemetry Logs and Active Progress Content -->
+<div class="flex-1 p-space-sm font-label-mono text-[11px] text-on-surface-variant overflow-y-auto space-y-1 select-text bg-surface-container-lowest">
+<div class="flex items-center gap-2">
+<span class="text-outline">[14:22:01.320]</span>
+<span class="text-primary">Connecting to 10.240.12.8:22 via Bastion Gateway (47.92.110.15:22)...</span>
+<span class="text-tertiary font-bold">OK</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-outline">[14:22:01.540]</span>
+<span>SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.4 handshake established. Cipher: chacha20-poly1305@openssh.com</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-outline">[14:22:01.810]</span>
+<span class="text-tertiary">Authenticated with public key 'id_ed25519_prod' (SHA256:4dK9z9L+8P0...2mA). Access granted.</span>
+</div>
+<div class="flex items-center justify-between text-on-surface bg-surface-container-low px-1.5 py-0.5 rounded border border-outline-variant">
+<div class="flex items-center gap-2">
+<span class="text-outline">[14:23:45.112]</span>
+<span class="text-secondary">[SFTP Upload]</span>
+<span>'app-proxy.conf' (42.8 KB) -&gt; /etc/nginx/conf.d/</span>
+</div>
+<div class="flex items-center gap-2 font-semibold text-tertiary">
+<span>100% [DONE (1.2 MB/s)]</span>
+<span class="material-symbols-outlined text-[13px]" data-icon="check_circle">check_circle</span>
+</div>
+</div>
+<!-- Active Download Task with Integrated Live Progress Bar -->
+<div class="flex flex-col bg-surface-container-high px-2 py-1 rounded border border-outline-variant">
+<div class="flex items-center justify-between text-on-surface text-[11px]">
+<div class="flex items-center gap-2 truncate">
+<span class="text-outline">[14:24:10.050]</span>
+<span class="text-tertiary">[SFTP Download]</span>
+<span class="truncate">access.log.2025-02-23.gz (14.2 MB) &lt;- /var/log/nginx/</span>
+</div>
+<div class="flex items-center gap-3 font-label-mono text-[10px] text-on-surface-variant flex-shrink-0">
+<span class="text-secondary font-bold">68%</span>
+<span>Speed: <strong class="text-tertiary">4.8 MB/s</strong></span>
+<span>Transferred: 9.6 / 14.2 MB</span>
+<span>ETA: <strong class="text-on-surface">2s</strong></span>
+</div>
+</div>
+<!-- High density progress track -->
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden mt-1">
+<div class="bg-tertiary h-full rounded-full transition-all duration-300" style="width: 68%;"></div>
+</div>
+</div>
+</div>
+<!-- System Tray Status Bar -->
+<div class="h-5 bg-surface-container border-t border-outline-variant px-space-md flex items-center justify-between text-outline font-label-mono text-[10px] flex-shrink-0">
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+              CLUSTER ONLINE
+            </span>
+<span>Active Tunnels: 2</span>
+<span>SFTP Channels: 1 Open</span>
+</div>
+<div class="flex items-center gap-3">
+<span>Encoding: UTF-8</span>
+<span>CRLF: LF (Unix)</span>
+<span class="text-on-surface">ShellCore v8.4.2-build.928</span>
+</div>
+</div>
+</footer>
+</main>
+</div>
+</body></html>
