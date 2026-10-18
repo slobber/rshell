@@ -46,6 +46,7 @@ pub struct ShellCoreApp {
     pub hosts: Vec<HostFolder>,
     pub active_host_id: Option<u64>,
     pub connected_hosts: HashSet<u64>,
+    pub rdp_compat_retried: HashSet<u64>,
     pub workspace: Workspace,
     pub next_tab_id: u64,
     pub next_aux_session_id: u64,

@@ -11,6 +11,7 @@ use smallvec::SmallVec;
 
 use crate::domain::Host;
 
+pub mod clipboard;
 pub mod keyboard_capture;
 
 pub const DEFAULT_DESKTOP_WIDTH: u16 = 1280;
@@ -54,6 +55,8 @@ struct RdpSession {
     frame_version: u64,
     requested_size: Option<(u16, u16)>,
     error: Option<String>,
+    #[cfg(windows)]
+    _clipboard_host: Option<clipboard::ClipboardHost>,
 }
 
 pub struct RdpManager {
@@ -81,6 +84,27 @@ impl RdpManager {
         desktop_width: u16,
         desktop_height: u16,
     ) -> Result<(), String> {
+        self.open_with(tab_id, host, desktop_width, desktop_height, true)
+    }
+
+    pub fn open_compat(
+        &mut self,
+        tab_id: u64,
+        host: &Host,
+        desktop_width: u16,
+        desktop_height: u16,
+    ) -> Result<(), String> {
+        self.open_with(tab_id, host, desktop_width, desktop_height, false)
+    }
+
+    fn open_with(
+        &mut self,
+        tab_id: u64,
+        host: &Host,
+        desktop_width: u16,
+        desktop_height: u16,
+        graphics_pipeline: bool,
+    ) -> Result<(), String> {
         let destination = Destination::from_parts(
             host.ip.clone(),
             if host.port == 0 { 3389 } else { host.port },
@@ -106,7 +130,7 @@ impl RdpManager {
             .with_autologon(true)
             // KRDP (KDE Plasma) closes the session during capability exchange
             // when the client does not advertise the Graphics Pipeline extension.
-            .with_graphics_pipeline(true);
+            .with_graphics_pipeline(false);
         let domain = host.gateway.trim();
         if !domain.is_empty() && !domain.eq_ignore_ascii_case("direct") {
             builder = builder.with_domain(domain);
@@ -124,6 +148,14 @@ impl RdpManager {
         #[cfg(windows)]
         let client = attach_drive_redirection(client);
         let input = client.input_sender();
+        #[cfg(windows)]
+        let (client, clipboard_host) = match clipboard::start(input.clone()) {
+            Ok((factory, host)) => (client.with_cliprdr_backend_factory(factory), Some(host)),
+            Err(error) => {
+                eprintln!("{error}");
+                (client, None)
+            }
+        };
         let host_id = host.id;
         let event_tx = self.event_tx.clone();
         std::thread::Builder::new()
@@ -181,6 +213,8 @@ impl RdpManager {
                 frame_version: 0,
                 requested_size: Some((desktop_width.max(640), desktop_height.max(480))),
                 error: None,
+                #[cfg(windows)]
+                _clipboard_host: clipboard_host,
             },
         );
         Ok(())
@@ -289,6 +323,12 @@ impl RdpManager {
             session.requested_size = Some((width, height));
         }
         sent
+    }
+
+    pub fn last_size(&self, tab_id: u64) -> Option<(u16, u16)> {
+        self.sessions
+            .get(&tab_id)
+            .and_then(|session| session.requested_size)
     }
 
     pub fn close_tab(&mut self, tab_id: u64) {
@@ -420,12 +460,23 @@ fn forward_output(
             host_id,
             message: match result {
                 Ok(reason) => format!("RDP session ended: {reason:?}"),
-                Err(error) => format!("RDP session error: {error}"),
+                Err(error) => format!("RDP session error: {}", describe_error(&error)),
             },
         },
         _ => return true,
     };
     event_tx.send(event).is_ok()
+}
+
+fn describe_error(error: &dyn std::error::Error) -> String {
+    let mut message = error.to_string();
+    let mut source = error.source();
+    while let Some(cause) = source {
+        message.push_str(": ");
+        message.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    message
 }
 
 fn describe_connection_failure(error: &impl std::fmt::Debug) -> String {

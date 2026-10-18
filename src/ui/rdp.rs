@@ -9,7 +9,7 @@ use crate::theme::{Palette, MIN_UI_FONT_SIZE};
 
 pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &SessionTab, palette: Palette) {
     let window_focused = ui.input(|input| input.focused);
-    crate::rdp::keyboard_capture::set_enabled(window_focused);
+    crate::rdp::keyboard_capture::set_enabled(window_focused && app.rdp.error(tab.id).is_none());
     for key in crate::rdp::keyboard_capture::drain() {
         let mut flags = KeyboardFlags::empty();
         if key.extended {
@@ -202,6 +202,17 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &SessionTab, palette: Pale
                             send_unicode(app, tab.id, code as u16);
                         }
                     }
+                }
+                Event::Paste(_) if modifiers.ctrl => {
+                    send_shortcut(
+                        app,
+                        tab.id,
+                        egui::Modifiers {
+                            ctrl: true,
+                            ..Default::default()
+                        },
+                        0x2f,
+                    );
                 }
                 Event::Paste(text) if !modifiers.ctrl && !modifiers.alt => {
                     for character in text.chars() {

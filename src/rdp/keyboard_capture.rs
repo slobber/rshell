@@ -14,14 +14,14 @@ mod platform {
     use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, VK_CONTROL, VK_ESCAPE, VK_LWIN, VK_MENU, VK_RWIN, VK_SNAPSHOT, VK_TAB,
+        GetAsyncKeyState, MapVirtualKeyW, MAPVK_VK_TO_VSC_EX, VK_CONTROL, VK_ESCAPE, VK_LWIN,
+        VK_MENU, VK_RWIN, VK_SNAPSHOT, VK_TAB,
     };
     use windows::Win32::UI::Input::{RegisterRawInputDevices, RAWINPUTDEVICE, RIDEV_REMOVE};
     use windows::Win32::UI::WindowsAndMessaging::{
         CallNextHookEx, CreateWindowExW, DispatchMessageW, GetMessageW, SetWindowsHookExW,
-        TranslateMessage, UnhookWindowsHookEx, HHOOK, KBDLLHOOKSTRUCT,
-        LLKHF_EXTENDED, MSG, WH_KEYBOARD_LL, WINDOW_EX_STYLE, WINDOW_STYLE, WM_KEYDOWN, WM_KEYUP,
-        WM_SYSKEYDOWN, WM_SYSKEYUP,
+        TranslateMessage, KBDLLHOOKSTRUCT, LLKHF_EXTENDED, MSG, WH_KEYBOARD_LL, WINDOW_EX_STYLE,
+        WINDOW_STYLE, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
     };
 
     use super::CapturedKey;
@@ -29,57 +29,21 @@ mod platform {
     static ENABLED: AtomicBool = AtomicBool::new(false);
     static WIN_DOWN: AtomicBool = AtomicBool::new(false);
     static HOOK: AtomicIsize = AtomicIsize::new(0);
-    static PROBE_HOOK: AtomicIsize = AtomicIsize::new(0);
     static HOOK_STARTED: AtomicBool = AtomicBool::new(false);
     static QUEUE: Mutex<Vec<CapturedKey>> = Mutex::new(Vec::new());
-
-    #[cfg(debug_assertions)]
-    fn probe_log(message: &str) {
-        use std::io::Write;
-        if let Ok(mut file) = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(std::env::temp_dir().join("rshell-hook.log"))
-        {
-            let millis = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|duration| duration.as_millis())
-                .unwrap_or_default();
-            let _ = writeln!(file, "{millis} {message}");
-        }
-    }
 
     fn pressed(key: u16) -> bool {
         unsafe { GetAsyncKeyState(i32::from(key)) as u16 & 0x8000 != 0 }
     }
 
-    unsafe extern "system" fn probe_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-        #[cfg(debug_assertions)]
-        if code >= 0 {
-            let info = unsafe { &*(lparam.0 as *const KBDLLHOOKSTRUCT) };
-            probe_log(&format!(
-                "probe vk={} msg={:#x}",
-                info.vkCode, wparam.0
-            ));
-        }
-        unsafe { CallNextHookEx(None, code, wparam, lparam) }
+    fn mapped_scan_code(vk: u32) -> (u8, bool) {
+        let mapped = unsafe { MapVirtualKeyW(vk, MAPVK_VK_TO_VSC_EX) };
+        let scan_code = (mapped & 0xff) as u8;
+        let extended = matches!(mapped >> 8, 0xe0 | 0xe1);
+        (scan_code, extended)
     }
 
     unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-        #[cfg(debug_assertions)]
-        {
-            let vk = if code >= 0 {
-                unsafe { (*(lparam.0 as *const KBDLLHOOKSTRUCT)).vkCode }
-            } else {
-                0
-            };
-            probe_log(&format!(
-                "raw code={code} vk={vk} msg={:#x} enabled={} thread={:?}",
-                wparam.0,
-                ENABLED.load(Ordering::Relaxed),
-                std::thread::current().id()
-            ));
-        }
         if code >= 0 && ENABLED.load(Ordering::Relaxed) {
             let info = unsafe { &*(lparam.0 as *const KBDLLHOOKSTRUCT) };
             let message = wparam.0 as u32;
@@ -102,10 +66,15 @@ mod platform {
                     WIN_DOWN.load(Ordering::Relaxed)
                 };
                 if swallow {
+                    let (mapped_scan, mapped_extended) = mapped_scan_code(vk);
                     if let Ok(mut queue) = QUEUE.lock() {
                         queue.push(CapturedKey {
-                            scan_code: info.scanCode as u8,
-                            extended: info.flags.contains(LLKHF_EXTENDED),
+                            scan_code: if mapped_scan == 0 {
+                                info.scanCode as u8
+                            } else {
+                                mapped_scan
+                            },
+                            extended: mapped_extended || info.flags.contains(LLKHF_EXTENDED),
                             release: up,
                         });
                         if queue.len() > 64 {
@@ -119,6 +88,27 @@ mod platform {
         unsafe { CallNextHookEx(None, code, wparam, lparam) }
     }
 
+    fn install_hook() -> bool {
+        let module = unsafe { GetModuleHandleW(w!("user32.dll")) }.unwrap_or_default();
+        match unsafe {
+            SetWindowsHookExW(
+                WH_KEYBOARD_LL,
+                Some(keyboard_proc),
+                Some(HINSTANCE(module.0)),
+                0,
+            )
+        } {
+            Ok(hook) => {
+                HOOK.store(hook.0 as isize, Ordering::SeqCst);
+                true
+            }
+            Err(error) => {
+                eprintln!("keyboard capture hook install failed: {error}");
+                false
+            }
+        }
+    }
+
     fn start_hook_thread() {
         if HOOK_STARTED.swap(true, Ordering::SeqCst) {
             return;
@@ -126,7 +116,7 @@ mod platform {
         let started = std::thread::Builder::new()
             .name("rshell-keyboard-hook".to_owned())
             .spawn(|| {
-                let window = unsafe {
+                let _window = unsafe {
                     CreateWindowExW(
                         WINDOW_EX_STYLE(0),
                         w!("STATIC"),
@@ -142,8 +132,6 @@ mod platform {
                         None,
                     )
                 };
-                #[cfg(debug_assertions)]
-                probe_log(&format!("message window {window:?}"));
                 if !install_hook() {
                     HOOK_STARTED.store(false, Ordering::SeqCst);
                     return;
@@ -161,58 +149,29 @@ mod platform {
         }
     }
 
-    fn install_hook() -> bool {
-        let module = unsafe { GetModuleHandleW(w!("user32.dll")) }.unwrap_or_default();
-        match unsafe {
-            SetWindowsHookExW(
-                WH_KEYBOARD_LL,
-                Some(keyboard_proc),
-                Some(HINSTANCE(module.0)),
-                0,
-            )
+    fn remove_raw_keyboard() {
+        let devices = [RAWINPUTDEVICE {
+            usUsagePage: 1,
+            usUsage: 6,
+            dwFlags: RIDEV_REMOVE,
+            hwndTarget: HWND::default(),
+        }];
+        if let Err(error) = unsafe {
+            RegisterRawInputDevices(&devices, std::mem::size_of::<RAWINPUTDEVICE>() as u32)
         } {
-            Ok(hook) => {
-                let previous = HOOK.swap(hook.0 as isize, Ordering::SeqCst);
-                if previous != 0 {
-                    unsafe {
-                        let _ = UnhookWindowsHookEx(HHOOK(previous as *mut core::ffi::c_void));
-                    }
-                }
-                #[cfg(debug_assertions)]
-                probe_log(&format!("hook installed {:?}", hook.0));
-                if PROBE_HOOK.load(Ordering::SeqCst) == 0 {
-                    if let Ok(probe) = unsafe {
-                        SetWindowsHookExW(
-                            WH_KEYBOARD_LL,
-                            Some(probe_proc),
-                            Some(HINSTANCE(module.0)),
-                            0,
-                        )
-                    } {
-                        PROBE_HOOK.store(probe.0 as isize, Ordering::SeqCst);
-                        #[cfg(debug_assertions)]
-                        probe_log(&format!("probe hook installed {:?}", probe.0));
-                    }
-                }
-                true
-            }
-            Err(error) => {
-                #[cfg(debug_assertions)]
-                probe_log(&format!("hook install failed: {error}"));
-                eprintln!("keyboard capture hook install failed: {error}");
-                false
-            }
+            eprintln!("keyboard raw input removal failed: {error}");
         }
     }
 
     pub fn set_enabled(enabled: bool) {
-        ENABLED.store(enabled, Ordering::SeqCst);
-        #[cfg(debug_assertions)]
-        probe_log(&format!(
-            "set_enabled({enabled}) hook={}",
-            HOOK.load(Ordering::SeqCst)
-        ));
+        let was_enabled = ENABLED.swap(enabled, Ordering::SeqCst);
         if enabled {
+            // Winit registers raw keyboard input for device events. With that
+            // registration active Windows routes Win-key downs past low-level
+            // hooks, so only key-up events reach the RDP surface.
+            if !was_enabled {
+                remove_raw_keyboard();
+            }
             start_hook_thread();
         } else {
             WIN_DOWN.store(false, Ordering::SeqCst);
@@ -232,25 +191,10 @@ mod platform {
     pub fn is_enabled() -> bool {
         ENABLED.load(Ordering::SeqCst) && HOOK.load(Ordering::SeqCst) != 0
     }
-
-    pub fn disable_raw_keyboard() {
-        let devices = [RAWINPUTDEVICE {
-            usUsagePage: 1,
-            usUsage: 6,
-            dwFlags: RIDEV_REMOVE,
-            hwndTarget: HWND::default(),
-        }];
-        unsafe {
-            let _ = RegisterRawInputDevices(&devices, std::mem::size_of::<RAWINPUTDEVICE>() as u32);
-        }
-    }
 }
 
 #[cfg(windows)]
-pub use platform::{disable_raw_keyboard, drain, is_enabled, set_enabled};
-
-#[cfg(not(windows))]
-pub fn disable_raw_keyboard() {}
+pub use platform::{drain, is_enabled, set_enabled};
 
 #[cfg(not(windows))]
 pub fn set_enabled(_enabled: bool) {}

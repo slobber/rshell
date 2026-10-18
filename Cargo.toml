@@ -29,6 +29,7 @@ eframe = { version = "0.37", default-features = false, features = [
     "wayland",
     "x11",
 ] }
+env_logger = "0.11"
 egui_extras = { version = "0.37", default-features = false, features = ["svg", "image"] }
 fontdb = "0.24"
 getrandom = "0.4"
@@ -58,6 +59,8 @@ ironrdp-client = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b
     "rdpdr",
     "rustls",
 ] }
+ironrdp-cliprdr = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b364a0282bab85087f658a81fe4207b6b31", package = "ironrdp-cliprdr" }
+ironrdp-core = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b364a0282bab85087f658a81fe4207b6b31", package = "ironrdp-core" }
 ironrdp-pdu = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b364a0282bab85087f658a81fe4207b6b31", package = "ironrdp-pdu" }
 smallvec = "1.15"
 
@@ -67,12 +70,16 @@ ironrdp-rdpdr-native = { git = "https://github.com/Devolutions/IronRDP", rev = "
 windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
+    "Win32_System_DataExchange",
     "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Threading",
     "Win32_System_WindowsProgramming",
     "Win32_UI_Input",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
 ] }
+ironrdp-cliprdr-native = { git = "https://github.com/Devolutions/IronRDP", rev = "62246b364a0282bab85087f658a81fe4207b6b31", package = "ironrdp-cliprdr-native" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring = { version = "3", default-features = false, features = ["apple-native"] }

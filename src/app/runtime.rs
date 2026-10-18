@@ -14,7 +14,9 @@ impl ShellCoreApp {
             .workspace
             .active_tab()
             .is_some_and(|tab| tab.kind == crate::domain::TabKind::Rdp);
-        crate::rdp::keyboard_capture::set_enabled(true);
+        if !rdp_active {
+            crate::rdp::keyboard_capture::set_enabled(false);
+        }
         self.poll_ssh_events(ctx);
         self.poll_rdp_events(ctx);
 
@@ -30,9 +32,7 @@ impl ShellCoreApp {
             .transfers
             .iter()
             .any(|transfer| transfer.status == TransferStatus::Active);
-        ctx.request_repaint_after(if crate::rdp::keyboard_capture::is_enabled() {
-            Duration::from_millis(8)
-        } else if active_transfers || self.rdp.has_sessions() {
+        ctx.request_repaint_after(if active_transfers || self.rdp.has_sessions() {
             Duration::from_millis(80)
         } else {
             Duration::from_millis(500)

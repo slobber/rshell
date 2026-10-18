@@ -50,6 +50,33 @@ impl ShellCoreApp {
                     host_id,
                     message,
                 } => {
+                    if (message.contains("rfx progressive decode failed")
+                        || message.contains("GraphicsPipelineClient"))
+                        && !self.rdp_compat_retried.contains(&tab_id)
+                    {
+                        let size = self.rdp.last_size(tab_id);
+                        let host = self
+                            .hosts
+                            .iter()
+                            .flat_map(flatten_visible_hosts)
+                            .find(|host| host.id == host_id)
+                            .cloned();
+                        if let (Some(host), Some((width, height))) = (host, size) {
+                            self.rdp_compat_retried.insert(tab_id);
+                            self.rdp.forget_session(tab_id);
+                            match self.rdp.open_compat(tab_id, &host, width, height) {
+                                Ok(()) => {
+                                    self.log(
+                                        LogLevel::Info,
+                                        "RDP EGFX decode failed; retrying without graphics pipeline."
+                                            .to_owned(),
+                                    );
+                                    continue;
+                                }
+                                Err(error) => self.log(LogLevel::Error, error),
+                            }
+                        }
+                    }
                     self.rdp.forget_session(tab_id);
                     if self.rdp.session_count_for_host(host_id) == 0
                         && self.ssh.session_count_for_host(host_id) == 0

@@ -5,6 +5,7 @@ use rshell::app::ShellCoreApp;
 use rshell::config::AppConfig;
 
 fn main() -> eframe::Result<()> {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     seed_hostname_environment();
     let config = AppConfig::load();
     let mut viewport = egui::ViewportBuilder::default()

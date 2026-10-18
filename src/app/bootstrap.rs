@@ -70,6 +70,7 @@ impl ShellCoreApp {
             hosts: Vec::new(),
             active_host_id: None,
             connected_hosts: HashSet::new(),
+            rdp_compat_retried: HashSet::new(),
             workspace: Workspace::new(),
             next_tab_id: 1,
             next_aux_session_id: 1_000_000,
