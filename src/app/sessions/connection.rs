@@ -8,7 +8,10 @@ impl ShellCoreApp {
         if self.connected_hosts.contains(&host_id) {
             return;
         }
-        if find_host(&self.hosts, host_id).is_none() {
+        let Some(current_status) = find_host(&self.hosts, host_id).map(|host| host.status) else {
+            return;
+        };
+        if current_status == HostStatus::Connecting {
             return;
         }
         if let Some(host) = find_host_mut(&mut self.hosts, host_id) {
@@ -61,7 +64,9 @@ impl ShellCoreApp {
         self.rdp.disconnect_host(host.id);
         self.connected_hosts.remove(&host.id);
         if let Some(host) = find_host_mut(&mut self.hosts, host.id) {
-            host.status = HostStatus::Connecting;
+            // Let `ensure_connected` report the new attempt once instead of
+            // marking the host as connecting before it can log the transition.
+            host.status = HostStatus::Offline;
             host.latency_ms = None;
         }
         let tab_ids = self.host_tab_ids(host.id);
