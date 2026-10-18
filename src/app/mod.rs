@@ -30,6 +30,7 @@ use crate::ui;
 pub use state::{
     AppLock, ChmodDialog, ConsoleTab, DropTarget, EditorDialog, FolderDraft, FontCache, HostDraft,
     HostTreeDrag, LogSelection, Md5Dialog, SecurityAction, SidebarTab, TabDrag, TreeItem,
+    TreeRename,
 };
 
 pub struct ShellCoreApp {
@@ -45,6 +46,8 @@ pub struct ShellCoreApp {
     pub runtime_theme: ThemeMode,
     pub hosts: Vec<HostFolder>,
     pub active_host_id: Option<u64>,
+    pub active_tree_item: Option<TreeItem>,
+    pub tree_rename: Option<TreeRename>,
     pub connected_hosts: HashSet<u64>,
     pub rdp_compat_retried: HashSet<u64>,
     pub workspace: Workspace,
@@ -73,6 +76,7 @@ pub struct ShellCoreApp {
     pub host_dialog: Option<HostDraft>,
     pub folder_dialog: Option<FolderDraft>,
     pub folder_delete: Option<u64>,
+    pub host_delete: Option<u64>,
     pub settings_open: bool,
     pub keyring_open: bool,
     pub snippets_open: bool,

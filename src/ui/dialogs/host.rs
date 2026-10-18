@@ -493,7 +493,6 @@ pub(super) fn folder_window(
     let Some(mut draft) = app.folder_dialog.take() else {
         return;
     };
-    let editing = draft.editing_id.is_some();
     let mut save = false;
     let mut close_requested = false;
     let mut folders = Vec::new();
@@ -501,59 +500,44 @@ pub(super) fn folder_window(
     let (header_close, _) = dialog_window(
         ctx,
         "folder_dialog",
-        if editing {
-            tr(lang, "rename_folder")
-        } else {
-            tr(lang, "add_folder_title")
-        },
-        if editing {
-            Icon::Pencil
-        } else {
-            Icon::FolderPlus
-        },
+        tr(lang, "add_folder_title"),
+        Icon::FolderPlus,
         420.0,
         None,
         false,
         palette,
         |ui| {
             field(ui, palette, lang, tr(lang, "folder_name"), &mut draft.name);
-            field(ui, palette, lang, tr(lang, "subtitle"), &mut draft.subtitle);
-            if !editing {
-                ui.label(
-                    RichText::new(tr(lang, "parent_folder"))
-                        .size(13.0)
-                        .color(palette.muted),
-                );
-                ComboBox::from_id_salt("folder_parent")
-                    .icon(combo_icon)
-                    .selected_text(
-                        draft
-                            .parent_id
-                            .and_then(|id| folders.iter().find(|(folder_id, _)| *folder_id == id))
-                            .map(|(_, label)| label.as_str())
-                            .unwrap_or(tr(lang, "top_level")),
-                    )
-                    .width(ui.available_width())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut draft.parent_id, None, tr(lang, "top_level"));
-                        for (id, label) in &folders {
-                            ui.selectable_value(&mut draft.parent_id, Some(*id), label);
-                        }
-                    });
-            }
+            ui.label(
+                RichText::new(tr(lang, "parent_folder"))
+                    .size(13.0)
+                    .color(palette.muted),
+            );
+            ComboBox::from_id_salt("folder_parent")
+                .icon(combo_icon)
+                .selected_text(
+                    draft
+                        .parent_id
+                        .and_then(|id| folders.iter().find(|(folder_id, _)| *folder_id == id))
+                        .map(|(_, label)| label.as_str())
+                        .unwrap_or(tr(lang, "top_level")),
+                )
+                .width(ui.available_width())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut draft.parent_id, None, tr(lang, "top_level"));
+                    for (id, label) in &folders {
+                        ui.selectable_value(&mut draft.parent_id, Some(*id), label);
+                    }
+                });
             ui.add_space(8.0);
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(
                         !draft.name.trim().is_empty(),
                         egui::Button::new(
-                            RichText::new(if editing {
-                                tr(lang, "save")
-                            } else {
-                                tr(lang, "add")
-                            })
-                            .size(13.0)
-                            .color(palette.on_accent),
+                            RichText::new(tr(lang, "add"))
+                                .size(13.0)
+                                .color(palette.on_accent),
                         )
                         .fill(palette.accent)
                         .stroke(Stroke::NONE),
@@ -572,11 +556,7 @@ pub(super) fn folder_window(
         return;
     }
     if save {
-        if editing {
-            app.rename_folder(draft);
-        } else {
-            app.add_folder(draft);
-        }
+        app.add_folder(draft);
     } else {
         app.folder_dialog = Some(draft);
     }
@@ -651,5 +631,76 @@ pub(super) fn delete_folder_window(
     if confirm {
         app.delete_folder(folder_id);
         app.folder_delete = None;
+    }
+}
+
+pub(super) fn delete_host_window(
+    app: &mut ShellCoreApp,
+    ctx: &egui::Context,
+    palette: Palette,
+    lang: Language,
+) {
+    let Some(host_id) = app.host_delete else {
+        return;
+    };
+    let Some(host) = crate::domain::find_host(&app.hosts, host_id).cloned() else {
+        app.host_delete = None;
+        return;
+    };
+    let mut confirm = false;
+    let mut close_requested = false;
+    let warning = tr(lang, "delete_host_warning")
+        .replace("{name}", &host.name)
+        .replace("{address}", &host.address());
+
+    let (header_close, _) = dialog_window(
+        ctx,
+        "host_delete_dialog",
+        tr(lang, "delete_host"),
+        Icon::Trash,
+        460.0,
+        None,
+        false,
+        palette,
+        |ui| {
+            ui.label(
+                RichText::new(&host.name)
+                    .size(16.0)
+                    .strong()
+                    .color(palette.text),
+            );
+            ui.add_space(6.0);
+            ui.label(RichText::new(warning).size(13.0).color(palette.text_soft));
+            ui.add_space(10.0);
+            ui.horizontal(|ui| {
+                if ui
+                    .add(
+                        egui::Button::new(
+                            RichText::new(tr(lang, "delete"))
+                                .size(13.0)
+                                .color(Color32::WHITE),
+                        )
+                        .fill(palette.red)
+                        .stroke(Stroke::NONE)
+                        .min_size(Vec2::new(100.0, 30.0)),
+                    )
+                    .clicked()
+                {
+                    confirm = true;
+                }
+                if secondary_button(ui, palette, tr(lang, "cancel")).clicked() {
+                    close_requested = true;
+                }
+            });
+        },
+    );
+
+    if close_requested || header_close {
+        app.host_delete = None;
+        return;
+    }
+    if confirm {
+        app.delete_host(host_id);
+        app.host_delete = None;
     }
 }

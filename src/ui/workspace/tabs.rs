@@ -19,7 +19,7 @@ pub(super) fn tab_strip(
         Stroke::new(1.0, palette.border),
     );
 
-    let tools_width = if pane.tabs.is_empty() { 0.0 } else { 96.0 };
+    let tools_width = if pane.tabs.is_empty() { 0.0 } else { 104.0 };
     let tabs_width = (strip_rect.width() - tools_width).max(90.0);
     let tabs_rect = Rect::from_min_size(strip_rect.min, Vec2::new(tabs_width, strip_rect.height()));
     let mut close_tab = None;
@@ -99,13 +99,14 @@ pub(super) fn tab_strip(
     if !pane.tabs.is_empty() {
         let tools_rect = Rect::from_min_max(
             egui::pos2(strip_rect.right() - tools_width, strip_rect.top()),
-            strip_rect.max,
+            egui::pos2(strip_rect.right() - 8.0, strip_rect.bottom()),
         );
         ui.scope_builder(
             egui::UiBuilder::new()
                 .max_rect(tools_rect)
                 .layout(Layout::right_to_left(Align::Center)),
             |ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
                 let pane_maximized = app.maximized_pane == Some(pane.id);
                 let single_pane = matches!(app.workspace.root, SplitNode::Leaf(_));
                 let window_maximized = ui

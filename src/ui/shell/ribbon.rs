@@ -23,6 +23,24 @@ pub fn quick_ribbon(app: &mut ShellCoreApp, ui: &mut Ui) {
         )
         .show(ui, |ui| {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                if icon_button(
+                    ui,
+                    palette,
+                    if app.settings.sidebar_collapsed {
+                        Icon::LayoutSidebarCollapseRight
+                    } else {
+                        Icon::LayoutSidebarCollapseLeft
+                    },
+                    14.0,
+                    app.t("toggle_sidebar"),
+                    false,
+                )
+                .clicked()
+                {
+                    app.settings.sidebar_collapsed = !app.settings.sidebar_collapsed;
+                    app.persist_settings();
+                }
+                ui.separator();
                 let mut selected = current_tab.as_ref().map(|tab| tab.id);
                 let selected_text = current_tab
                     .as_ref()

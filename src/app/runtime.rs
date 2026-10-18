@@ -60,6 +60,9 @@ impl ShellCoreApp {
             return;
         }
         if ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape)) {
+            if self.tree_rename.take().is_some() {
+                return;
+            }
             self.settings_open = false;
             self.keyring_open = false;
             self.snippets_open = false;
@@ -68,6 +71,7 @@ impl ShellCoreApp {
             self.host_dialog = None;
             self.folder_dialog = None;
             self.folder_delete = None;
+            self.host_delete = None;
             self.editor_dialog = None;
             self.chmod_dialog = None;
             self.md5_dialog = None;

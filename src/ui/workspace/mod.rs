@@ -190,44 +190,49 @@ fn draw_leaf(
     size: Vec2,
 ) {
     let active = *focused_pane == pane.id;
-    let frame = Frame::new()
+    let border = Stroke::new(
+        1.0,
+        if active {
+            palette.border_strong
+        } else {
+            palette.border
+        },
+    );
+    let pane_response = Frame::new()
         .fill(palette.terminal_bg)
-        .stroke(Stroke::new(
-            1.0,
-            if active {
-                palette.border_strong
-            } else {
-                palette.border
-            },
-        ))
-        .inner_margin(Margin::ZERO);
-    frame.show(ui, |ui| {
-        ui.set_min_size(size);
-        ui.set_max_size(size);
-        tabs::tab_strip(app, ui, pane, focused_pane, palette);
-        let content_height = (ui.available_height()).max(40.0);
-        ui.allocate_ui_with_layout(
-            Vec2::new(ui.available_width(), content_height),
-            Layout::top_down(Align::Min),
-            |ui| {
-                if let Some(tab) = pane.active_tab_mut() {
-                    match tab.kind {
-                        TabKind::Terminal => {
-                            crate::ui::terminal::draw(app, ui, tab, palette);
+        .inner_margin(Margin::ZERO)
+        .show(ui, |ui| {
+            ui.set_min_size(size);
+            ui.set_max_size(size);
+            tabs::tab_strip(app, ui, pane, focused_pane, palette);
+            let content_height = (ui.available_height()).max(40.0);
+            ui.allocate_ui_with_layout(
+                Vec2::new(ui.available_width(), content_height),
+                Layout::top_down(Align::Min),
+                |ui| {
+                    if let Some(tab) = pane.active_tab_mut() {
+                        match tab.kind {
+                            TabKind::Terminal => {
+                                crate::ui::terminal::draw(app, ui, tab, palette);
+                            }
+                            TabKind::Sftp => {
+                                crate::ui::sftp::draw(app, ui, tab, palette);
+                            }
+                            TabKind::Rdp => {
+                                crate::ui::rdp::draw(app, ui, tab, palette);
+                            }
                         }
-                        TabKind::Sftp => {
-                            crate::ui::sftp::draw(app, ui, tab, palette);
-                        }
-                        TabKind::Rdp => {
-                            crate::ui::rdp::draw(app, ui, tab, palette);
-                        }
+                    } else {
+                        empty::empty_pane(app, ui, pane, palette);
                     }
-                } else {
-                    empty::empty_pane(app, ui, pane, palette);
-                }
-            },
-        );
-    });
+                },
+            );
+        });
+    let rect = pane_response.response.rect;
+    ui.painter()
+        .vline(rect.right() - 0.5, rect.y_range(), border);
+    ui.painter()
+        .hline(rect.x_range(), rect.bottom() - 0.5, border);
 
     let pane_rect = ui.min_rect();
     if let Some(drag) = &app.drag {

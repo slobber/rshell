@@ -3,12 +3,12 @@ use eframe::egui::{
     Ui, Vec2,
 };
 
-use crate::app::{HostTreeDrag, ShellCoreApp, SidebarTab, TreeItem};
-use crate::domain::{Host, HostFolder, HostStatus, TransferStatus, TunnelState};
+use crate::app::{HostTreeDrag, ShellCoreApp, SidebarTab, TreeItem, TreeRename};
+use crate::domain::{Host, HostFolder, HostStatus, TunnelState};
 use crate::i18n::Language;
 use crate::icons::Icon;
 use crate::theme::Palette;
-use crate::ui::components::{icon_button, progress_bar, status_dot};
+use crate::ui::components::{icon_button, status_dot};
 use crate::ui::text_input::TextInput;
 
 mod panels;
@@ -20,7 +20,8 @@ struct HostTreeAction {
     open_terminal: Option<u64>,
     open_sftp: Option<u64>,
     edit: Option<u64>,
-    rename_folder: Option<u64>,
+    rename_commit: Option<(TreeItem, String)>,
+    delete_host: Option<u64>,
     delete_folder: Option<u64>,
     move_item: Option<(TreeItem, u64)>,
     changed: bool,
@@ -47,12 +48,8 @@ fn draw_collapsed(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
         )
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
-                if crate::icons::app_logo(ui, 20.0)
-                    .on_hover_text("RShell")
-                    .clicked()
-                {
-                    app.settings.sidebar_collapsed = false;
-                    app.persist_settings();
+                if icon_button(ui, palette, Icon::Plus, 18.0, app.t("add_host"), false).clicked() {
+                    app.open_new_session();
                 }
                 ui.add_space(10.0);
                 if icon_button(
@@ -83,20 +80,6 @@ fn draw_collapsed(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
                     app.settings.sidebar_collapsed = false;
                     app.persist_settings();
                 }
-                if icon_button(
-                    ui,
-                    palette,
-                    Icon::SwitchHorizontal,
-                    18.0,
-                    app.t("sftp_queue"),
-                    app.sidebar_tab == SidebarTab::Queue,
-                )
-                .clicked()
-                {
-                    app.sidebar_tab = SidebarTab::Queue;
-                    app.settings.sidebar_collapsed = false;
-                    app.persist_settings();
-                }
             });
         });
 }
@@ -116,7 +99,6 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
                 .inner_margin(Margin::ZERO),
         )
         .show(ui, |ui| {
-            header(app, ui, palette);
             toolbar(app, ui, palette, &mut add_host, &mut add_folder);
             sidebar_tabs(app, ui, palette);
 
@@ -143,15 +125,21 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
                                         empty_tree(app, ui, palette);
                                     } else {
                                         let mut any_visible = false;
+                                        let language = app.settings.language;
+                                        let search = app.host_search.clone();
+                                        let active_tree_item = &mut app.active_tree_item;
+                                        let tree_rename = &mut app.tree_rename;
                                         for folder in &mut app.hosts {
                                             let action = tree::draw_folder(
                                                 ui,
                                                 folder,
                                                 0,
                                                 palette,
-                                                app.settings.language,
-                                                &app.host_search,
+                                                language,
+                                                &search,
                                                 &mut selected,
+                                                active_tree_item,
+                                                tree_rename,
                                             );
                                             any_visible |= action.visible;
                                             tree_action.changed |= action.changed;
@@ -170,7 +158,6 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
                                     }
                                 }
                                 SidebarTab::Tunnels => panels::draw_tunnels(app, ui, palette),
-                                SidebarTab::Queue => panels::draw_queue(app, ui, palette),
                             }
                         });
                 },
@@ -197,11 +184,14 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
     if let Some(id) = tree_action.edit {
         app.open_edit_host(id);
     }
+    if let Some((item, name)) = tree_action.rename_commit {
+        app.rename_tree_item(item, name);
+    }
+    if let Some(id) = tree_action.delete_host {
+        app.host_delete = Some(id);
+    }
     if let Some((item, target_folder)) = tree_action.move_item {
         app.move_tree_item(item, target_folder);
-    }
-    if let Some(id) = tree_action.rename_folder {
-        app.open_rename_folder(id);
     }
     if let Some(id) = tree_action.delete_folder {
         app.folder_delete = Some(id);
@@ -215,71 +205,6 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
     if add_folder {
         app.folder_dialog = Some(crate::app::FolderDraft::default());
     }
-}
-
-fn header(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 50.0), Sense::hover());
-    ui.painter()
-        .rect_filled(rect, CornerRadius::ZERO, palette.panel);
-    let icon_rect = egui::Rect::from_center_size(
-        egui::pos2(rect.left() + 18.0, rect.center().y),
-        Vec2::splat(18.0),
-    );
-    crate::icons::paint(ui, Icon::Server, icon_rect, palette.accent);
-    ui.painter().text(
-        egui::pos2(rect.left() + 32.0, rect.top() + 15.0),
-        egui::Align2::LEFT_CENTER,
-        app.t("session_manager"),
-        FontId::proportional(13.0),
-        palette.text,
-    );
-    ui.painter().text(
-        egui::pos2(rect.left() + 32.0, rect.top() + 33.0),
-        egui::Align2::LEFT_CENTER,
-        format!(
-            "{} {} · {}",
-            app.connected_hosts.len(),
-            app.t("active_sessions"),
-            app.t("hosts_count").replace(
-                "{count}",
-                &app.hosts
-                    .iter()
-                    .map(|folder| folder.host_count())
-                    .sum::<usize>()
-                    .to_string()
-            )
-        ),
-        FontId::monospace(13.0),
-        palette.muted,
-    );
-    let collapse = egui::Rect::from_center_size(
-        egui::pos2(rect.right() - 16.0, rect.center().y),
-        Vec2::splat(25.0),
-    );
-    let response = ui.interact(
-        collapse,
-        egui::Id::unique("collapse_sidebar"),
-        Sense::click(),
-    );
-    if response.hovered() {
-        ui.painter()
-            .rect_filled(response.rect, CornerRadius::same(3), palette.hover);
-    }
-    crate::icons::paint(
-        ui,
-        Icon::LayoutSidebarCollapseLeft,
-        collapse.shrink(5.0),
-        palette.text_soft,
-    );
-    if response.clicked() {
-        app.settings.sidebar_collapsed = true;
-        app.persist_settings();
-    }
-    ui.painter().hline(
-        rect.x_range(),
-        rect.bottom(),
-        Stroke::new(1.0, palette.border),
-    );
 }
 
 fn toolbar(
@@ -378,18 +303,13 @@ fn toolbar(
 }
 
 fn sidebar_tabs(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
-    let width = ui.available_width() / 3.0;
+    let width = ui.available_width() / 2.0;
     let (rect, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 28.0), Sense::hover());
     ui.painter()
         .rect_filled(rect, CornerRadius::ZERO, palette.panel);
     for (index, tab) in [
         (SidebarTab::Hosts, app.t("hosts"), Icon::Server),
         (SidebarTab::Tunnels, app.t("tunnels_tab"), Icon::Network),
-        (
-            SidebarTab::Queue,
-            app.t("queue_tab"),
-            Icon::SwitchHorizontal,
-        ),
     ]
     .into_iter()
     .enumerate()

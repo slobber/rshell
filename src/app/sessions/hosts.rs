@@ -1,4 +1,4 @@
-use crate::app::{FolderDraft, HostDraft, ShellCoreApp};
+use crate::app::{FolderDraft, HostDraft, ShellCoreApp, TreeItem};
 use crate::domain::{
     find_folder, find_folder_mut, find_host, find_host_mut, next_host_id, ConnectionBackend, Host,
     HostFolder, HostStatus, KeySource, LogLevel,
@@ -279,7 +279,6 @@ impl ShellCoreApp {
         }
         let id = max_folder_id(&self.hosts) + 1;
         let mut folder = HostFolder::new(id, draft.name.trim());
-        folder.subtitle = draft.subtitle.trim().to_owned();
         folder.parent_id = draft.parent_id;
         folder.sort_order = 0;
         if let Some(parent_id) = draft.parent_id {
@@ -293,32 +292,73 @@ impl ShellCoreApp {
         self.toast(self.t("folder_added"));
     }
 
-    pub fn open_rename_folder(&mut self, folder_id: u64) {
-        let Some(folder) = find_folder(&self.hosts, folder_id) else {
-            return;
-        };
-        self.folder_dialog = Some(FolderDraft {
-            editing_id: Some(folder.id),
-            name: folder.title.clone(),
-            subtitle: folder.subtitle.clone(),
-            parent_id: folder.parent_id,
-        });
-    }
-
-    pub fn rename_folder(&mut self, draft: FolderDraft) {
-        let Some(folder_id) = draft.editing_id else {
-            return;
-        };
-        if draft.name.trim().is_empty() {
+    pub fn rename_tree_item(&mut self, item: TreeItem, name: String) {
+        let name = name.trim();
+        if name.is_empty() {
             return;
         }
-        let Some(folder) = find_folder_mut(&mut self.hosts, folder_id) else {
+        match item {
+            TreeItem::Host(host_id) => {
+                let Some(existing) = find_host(&self.hosts, host_id).cloned() else {
+                    return;
+                };
+                if existing.name == name {
+                    return;
+                }
+                if let Some(host) = find_host_mut(&mut self.hosts, host_id) {
+                    host.name = name.to_owned();
+                }
+                update_tab_titles(&mut self.workspace.root, host_id, &existing.name, name);
+                self.log(
+                    LogLevel::Info,
+                    format!("Host renamed: {} -> {name}", existing.name),
+                );
+                self.toast(self.t("host_renamed"));
+            }
+            TreeItem::Folder(folder_id) => {
+                let Some(folder) = find_folder_mut(&mut self.hosts, folder_id) else {
+                    return;
+                };
+                if folder.title == name {
+                    return;
+                }
+                folder.title = name.to_owned();
+                self.toast(self.t("folder_renamed"));
+            }
+        }
+        self.persist_hosts();
+    }
+
+    pub fn delete_host(&mut self, host_id: u64) {
+        let Some(host) = find_host(&self.hosts, host_id).cloned() else {
             return;
         };
-        folder.title = draft.name.trim().to_owned();
-        folder.subtitle = draft.subtitle.trim().to_owned();
+        for tab_id in self.host_tab_ids(host_id) {
+            self.close_tab(tab_id);
+        }
+        self.ssh.disconnect_host(host_id);
+        self.rdp.disconnect_host(host_id);
+        self.connected_hosts.remove(&host_id);
+        take_host(&mut self.hosts, host_id);
+        if self.active_host_id == Some(host_id) {
+            self.active_host_id = first_host_id(&self.hosts);
+        }
+        if self.active_tree_item == Some(TreeItem::Host(host_id)) {
+            self.active_tree_item = None;
+        }
+        if self
+            .tree_rename
+            .as_ref()
+            .is_some_and(|rename| rename.item == TreeItem::Host(host_id))
+        {
+            self.tree_rename = None;
+        }
         self.persist_hosts();
-        self.toast(self.t("folder_renamed"));
+        self.log(
+            LogLevel::Info,
+            format!("Deleted host: {} ({})", host.name, host.address()),
+        );
+        self.toast(self.t("host_deleted"));
     }
 
     pub fn delete_folder(&mut self, folder_id: u64) {
@@ -339,6 +379,22 @@ impl ShellCoreApp {
 
         if take_folder(&mut self.hosts, folder_id).is_none() {
             return;
+        }
+        if self.active_tree_item.is_some_and(|item| match item {
+            TreeItem::Host(id) => host_ids.contains(&id),
+            TreeItem::Folder(id) => id == folder_id,
+        }) {
+            self.active_tree_item = None;
+        }
+        if self
+            .tree_rename
+            .as_ref()
+            .is_some_and(|rename| match rename.item {
+                TreeItem::Host(id) => host_ids.contains(&id),
+                TreeItem::Folder(id) => id == folder_id,
+            })
+        {
+            self.tree_rename = None;
         }
         if self
             .active_host_id

@@ -4,7 +4,6 @@ use crate::domain::{AuthKind, ConnectionBackend, DropZone, KeySource};
 pub enum SidebarTab {
     Hosts,
     Tunnels,
-    Queue,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -86,18 +85,14 @@ impl Default for HostDraft {
 
 #[derive(Clone, Debug)]
 pub struct FolderDraft {
-    pub editing_id: Option<u64>,
     pub name: String,
-    pub subtitle: String,
     pub parent_id: Option<u64>,
 }
 
 impl Default for FolderDraft {
     fn default() -> Self {
         Self {
-            editing_id: None,
             name: String::new(),
-            subtitle: String::new(),
             parent_id: None,
         }
     }
@@ -136,6 +131,13 @@ pub struct TabDrag {
 pub enum TreeItem {
     Host(u64),
     Folder(u64),
+}
+
+#[derive(Clone, Debug)]
+pub struct TreeRename {
+    pub item: TreeItem,
+    pub value: String,
+    pub just_started: bool,
 }
 
 #[derive(Clone, Debug)]

@@ -144,20 +144,21 @@ fn header(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
     ui.scope_builder(
         egui::UiBuilder::new()
             .max_rect(egui::Rect::from_min_max(
-                egui::pos2(rect.right() - 160.0, rect.top()),
-                rect.max,
+                egui::pos2(rect.right() - 168.0, rect.top()),
+                egui::pos2(rect.right() - 8.0, rect.bottom()),
             ))
             .layout(Layout::right_to_left(Align::Center)),
         |ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
             if icon_button(
                 ui,
                 palette,
                 if app.settings.console_collapsed {
-                    Icon::ChevronDown
+                    Icon::ChevronUp
                 } else {
-                    Icon::Minimize
+                    Icon::ChevronDown
                 },
-                12.0,
+                13.0,
                 if app.settings.console_collapsed {
                     app.t("expand_console")
                 } else {
@@ -170,7 +171,7 @@ fn header(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
                 app.settings.console_collapsed = !app.settings.console_collapsed;
                 app.persist_settings();
             }
-            if icon_button(ui, palette, Icon::Trash, 12.0, app.t("clear"), false).clicked() {
+            if icon_button(ui, palette, Icon::Trash, 13.0, app.t("clear"), false).clicked() {
                 match app.console_tab {
                     ConsoleTab::Logs => {
                         app.logs.clear();

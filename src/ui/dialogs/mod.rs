@@ -53,6 +53,9 @@ pub fn draw_modals(app: &mut ShellCoreApp, ctx: &egui::Context) {
     if app.folder_delete.is_some() {
         host::delete_folder_window(app, ctx, palette, lang);
     }
+    if app.host_delete.is_some() {
+        host::delete_host_window(app, ctx, palette, lang);
+    }
     if app.command_palette_open {
         palette::command_palette(app, ctx, palette, lang);
     }
