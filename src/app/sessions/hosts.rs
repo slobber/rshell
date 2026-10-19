@@ -1,7 +1,7 @@
 use crate::app::{FolderDraft, HostDraft, ShellCoreApp, TreeItem};
 use crate::domain::{
-    find_folder, find_folder_mut, find_host, find_host_mut, next_host_id, ConnectionBackend, Host,
-    HostFolder, HostStatus, KeySource, LogLevel,
+    find_folder, find_folder_mut, find_host, find_host_mut, next_host_id, AuthKind,
+    ConnectionBackend, Host, HostFolder, HostStatus, KeySource, LogLevel,
 };
 
 impl ShellCoreApp {
@@ -15,6 +15,7 @@ impl ShellCoreApp {
             title: self.t("edit_connection").to_owned(),
             name: host.name,
             backend: host.backend,
+            os: host.os,
             wsl_distro: host.wsl_distro.unwrap_or_default(),
             ip: host.ip,
             port: host.port.to_string(),
@@ -33,97 +34,33 @@ impl ShellCoreApp {
     }
 
     pub fn add_host(&mut self, draft: HostDraft) {
-        let name = draft.name.trim();
-        let ip = draft.ip.trim();
-        let is_wsl = draft.backend == ConnectionBackend::LocalWsl;
-        let is_rdp = draft.backend == ConnectionBackend::Rdp;
-        if name.is_empty() || (!is_wsl && ip.is_empty()) {
-            self.toast("Host name and IP are required");
-            return;
-        }
-        let port = if is_wsl {
-            0
-        } else if is_rdp {
-            draft.port.parse::<u16>().unwrap_or(3389)
-        } else {
-            draft.port.parse::<u16>().unwrap_or(22)
-        };
-        let user = draft.user.trim().to_owned();
         let folder_id = match draft.folder_id {
             Some(id) if find_folder(&self.hosts, id).is_some() => id,
-            _ => {
-                let id = max_folder_id(&self.hosts) + 1;
-                let mut folder = HostFolder::new(id, "Sessions");
-                folder.sort_order = self.hosts.len() as i64;
-                self.hosts.push(folder);
-                id
-            }
+            _ => max_folder_id(&self.hosts) + 1,
         };
         let id = next_host_id(&self.hosts);
-        let host = Host {
-            id,
-            folder_id,
-            name: name.to_owned(),
-            ip: ip.to_owned(),
-            port,
-            user: if is_wsl { String::new() } else { user.clone() },
-            auth: if is_rdp {
-                crate::domain::AuthKind::Password
-            } else {
-                draft.auth
-            },
-            key_source: draft.key_source,
-            key_id: if is_wsl || is_rdp { None } else { draft.key_id },
-            secret: if is_wsl {
-                String::new()
-            } else if is_rdp {
-                draft.secret
-            } else if (draft.auth == crate::domain::AuthKind::Key
-                && draft.key_source == KeySource::Managed)
-                || draft.auth == crate::domain::AuthKind::Agent
-            {
-                String::new()
-            } else {
-                draft.secret
-            },
-            gateway: if is_wsl {
-                "direct".to_owned()
-            } else {
-                draft.gateway
-            },
-            environment: draft.environment,
-            keep_alive: if is_wsl {
-                0
-            } else {
-                draft.keep_alive.parse::<u32>().unwrap_or(30)
-            },
-            backend: draft.backend,
-            os: crate::domain::HostOs::Unknown,
-            wsl_distro: if is_wsl {
-                Some(draft.wsl_distro.trim().to_owned()).filter(|value| !value.is_empty())
-            } else {
-                None
-            },
-            status: HostStatus::Offline,
-            latency_ms: None,
-            credentials_unavailable: false,
+        let host = match host_from_draft(&draft, id, folder_id, None) {
+            Ok(host) => host,
+            Err(message) => {
+                self.toast(message);
+                return;
+            }
         };
+        if find_folder(&self.hosts, folder_id).is_none() {
+            let mut folder = HostFolder::new(folder_id, "Sessions");
+            folder.sort_order = self.hosts.len() as i64;
+            self.hosts.push(folder);
+        }
+        let name = host.name.clone();
+        let address = host.address();
         if let Some(folder) = find_folder_mut(&mut self.hosts, folder_id) {
             folder.hosts.push(host);
         }
         self.active_host_id = Some(id);
         self.persist_hosts();
-        let address = if is_wsl {
-            format!("wsl:{}", draft.wsl_distro.trim())
-        } else if is_rdp {
-            format!("rdp:{user}@{ip}:{port}")
-        } else {
-            format!("{ip}:{port}")
-        };
         self.log(LogLevel::Info, format!("Host added: {name} ({address})"));
         self.toast(self.t("host_added"));
         if draft.connect_after_save {
-            self.ensure_connected(id);
             self.new_terminal_tab_for_host(id);
         }
     }
@@ -144,90 +81,32 @@ impl ShellCoreApp {
             self.toast("Host no longer exists");
             return;
         };
-        let name = draft.name.trim().to_owned();
-        let ip = draft.ip.trim().to_owned();
-        let is_wsl = draft.backend == ConnectionBackend::LocalWsl;
-        let is_rdp = draft.backend == ConnectionBackend::Rdp;
-        if name.is_empty() || (!is_wsl && ip.is_empty()) {
-            self.toast("Host name and IP are required");
-            return;
-        }
         let folder_id = draft
             .folder_id
             .filter(|id| find_folder(&self.hosts, *id).is_some())
             .unwrap_or(existing.folder_id);
-        let port = if is_wsl {
-            0
-        } else if is_rdp {
-            draft.port.parse::<u16>().unwrap_or(existing.port)
-        } else {
-            draft.port.parse::<u16>().unwrap_or(existing.port)
-        };
-        let user = draft.user.trim().to_owned();
-        let keep_alive = if is_wsl {
-            0
-        } else {
-            draft
-                .keep_alive
-                .parse::<u32>()
-                .unwrap_or(existing.keep_alive)
-        };
-        let secret = if is_wsl {
-            String::new()
-        } else if is_rdp {
-            draft.secret
-        } else if (draft.auth == crate::domain::AuthKind::Key
-            && draft.key_source == crate::domain::KeySource::Managed)
-            || draft.auth == crate::domain::AuthKind::Agent
-        {
-            String::new()
-        } else {
-            draft.secret
-        };
         let was_connected = self.connected_hosts.contains(&host_id)
             || self.ssh.session_count_for_host(host_id) > 0
             || self.rdp.session_count_for_host(host_id) > 0;
-        let updated = Host {
-            id: host_id,
-            folder_id,
-            name: name.clone(),
-            ip: ip.clone(),
-            port,
-            user: if is_wsl { String::new() } else { user.clone() },
-            auth: if is_rdp {
-                crate::domain::AuthKind::Password
-            } else {
-                draft.auth
-            },
-            key_source: draft.key_source,
-            key_id: if is_wsl || is_rdp { None } else { draft.key_id },
-            secret,
-            gateway: if is_wsl {
-                "direct".to_owned()
-            } else {
-                draft.gateway
-            },
-            environment: draft.environment,
-            keep_alive,
-            backend: draft.backend,
-            os: existing.os,
-            wsl_distro: if is_wsl {
-                Some(draft.wsl_distro.trim().to_owned()).filter(|value| !value.is_empty())
-            } else {
-                None
-            },
-            status: if was_connected {
-                HostStatus::Online
-            } else {
-                HostStatus::Offline
-            },
-            latency_ms: if was_connected {
-                existing.latency_ms
-            } else {
-                None
-            },
-            credentials_unavailable: false,
+        let mut updated = match host_from_draft(&draft, host_id, folder_id, Some(&existing)) {
+            Ok(host) => host,
+            Err(message) => {
+                self.toast(message);
+                return;
+            }
         };
+        updated.status = if was_connected {
+            HostStatus::Online
+        } else {
+            HostStatus::Offline
+        };
+        updated.latency_ms = if was_connected {
+            existing.latency_ms
+        } else {
+            None
+        };
+        let name = updated.name.clone();
+        let address = updated.address();
         let connection_changed = existing.ip != updated.ip
             || existing.port != updated.port
             || existing.user != updated.user
@@ -239,6 +118,15 @@ impl ShellCoreApp {
             || existing.keep_alive != updated.keep_alive
             || existing.backend != updated.backend
             || existing.wsl_distro != updated.wsl_distro;
+        let endpoint_changed = existing.ip != updated.ip
+            || existing.port != updated.port
+            || existing.gateway != updated.gateway
+            || existing.backend != updated.backend
+            || existing.os != updated.os
+            || existing.wsl_distro != updated.wsl_distro;
+        if endpoint_changed {
+            updated.rdp_mode = crate::domain::RdpConnectionMode::Auto;
+        }
 
         update_tab_titles(&mut self.workspace.root, host_id, &existing.name, &name);
         if existing.folder_id == folder_id {
@@ -252,13 +140,6 @@ impl ShellCoreApp {
         }
         self.active_host_id = Some(host_id);
         self.persist_hosts();
-        let address = if is_wsl {
-            format!("wsl:{}", draft.wsl_distro.trim())
-        } else if is_rdp {
-            format!("rdp:{user}@{ip}:{port}")
-        } else {
-            format!("{ip}:{port}")
-        };
         self.log(LogLevel::Info, format!("Host updated: {name} ({address})"));
         self.toast(self.t("connection_updated"));
 
@@ -470,7 +351,89 @@ impl ShellCoreApp {
     }
 }
 
-fn take_host(folders: &mut Vec<HostFolder>, host_id: u64) -> Option<Host> {
+fn host_from_draft(
+    draft: &HostDraft,
+    id: u64,
+    folder_id: u64,
+    existing: Option<&Host>,
+) -> Result<Host, String> {
+    let name = draft.name.trim();
+    let ip = draft.ip.trim();
+    let is_wsl = draft.backend == ConnectionBackend::LocalWsl;
+    let is_rdp = draft.backend == ConnectionBackend::Rdp;
+    if name.is_empty() || (!is_wsl && ip.is_empty()) {
+        return Err("Host name and IP are required".to_owned());
+    }
+
+    let fallback_port = existing
+        .map(|host| host.port)
+        .unwrap_or(if is_rdp { 3389 } else { 22 });
+    let port = if is_wsl {
+        0
+    } else {
+        draft.port.parse::<u16>().unwrap_or(fallback_port)
+    };
+    let fallback_keep_alive = existing.map(|host| host.keep_alive).unwrap_or(30);
+    let keep_alive = if is_wsl {
+        0
+    } else {
+        draft
+            .keep_alive
+            .parse::<u32>()
+            .unwrap_or(fallback_keep_alive)
+    };
+    let secret = if is_rdp {
+        draft.secret.clone()
+    } else if is_wsl
+        || (draft.auth == AuthKind::Key && draft.key_source == KeySource::Managed)
+        || draft.auth == AuthKind::Agent
+    {
+        String::new()
+    } else {
+        draft.secret.clone()
+    };
+
+    Ok(Host {
+        id,
+        folder_id,
+        name: name.to_owned(),
+        ip: ip.to_owned(),
+        port,
+        user: if is_wsl {
+            String::new()
+        } else {
+            draft.user.trim().to_owned()
+        },
+        auth: if is_rdp {
+            AuthKind::Password
+        } else {
+            draft.auth
+        },
+        key_source: draft.key_source,
+        key_id: if is_wsl || is_rdp { None } else { draft.key_id },
+        secret,
+        gateway: if is_wsl {
+            "direct".to_owned()
+        } else {
+            draft.gateway.clone()
+        },
+        environment: draft.environment.clone(),
+        keep_alive,
+        backend: draft.backend,
+        os: draft.os,
+        wsl_distro: if is_wsl {
+            Some(draft.wsl_distro.trim().to_owned()).filter(|value| !value.is_empty())
+        } else {
+            None
+        },
+        status: HostStatus::Offline,
+        latency_ms: None,
+        rdp_mode: existing.map(|host| host.rdp_mode).unwrap_or_default(),
+        credentials_unavailable: false,
+    })
+}
+
+fn take_host(folders: &mut [HostFolder], host_id: u64) -> Option<Host> {
     for folder in folders.iter_mut() {
         if let Some(index) = folder.hosts.iter().position(|host| host.id == host_id) {
             return Some(folder.hosts.remove(index));
@@ -540,4 +503,91 @@ fn first_host_id(folders: &[HostFolder]) -> Option<u64> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn base_draft(backend: ConnectionBackend) -> HostDraft {
+        HostDraft {
+            name: "Host".to_owned(),
+            backend,
+            ip: "10.0.0.2".to_owned(),
+            port: "22".to_owned(),
+            user: "root".to_owned(),
+            auth: AuthKind::Password,
+            secret: "secret".to_owned(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn rdp_draft_forces_password_authentication() {
+        let draft = HostDraft {
+            backend: ConnectionBackend::Rdp,
+            port: "3390".to_owned(),
+            user: "Administrator".to_owned(),
+            auth: AuthKind::Key,
+            key_source: KeySource::Managed,
+            key_id: Some(7),
+            ..base_draft(ConnectionBackend::Rdp)
+        };
+        let host = host_from_draft(&draft, 1, 1, None).unwrap();
+        assert_eq!(host.address(), "rdp:Administrator@10.0.0.2:3390");
+        assert_eq!(host.auth, AuthKind::Password);
+        assert_eq!(host.key_id, None);
+        assert_eq!(host.secret, "secret");
+    }
+
+    #[test]
+    fn wsl_draft_clears_transport_fields() {
+        let draft = HostDraft {
+            backend: ConnectionBackend::LocalWsl,
+            ip: String::new(),
+            wsl_distro: "Ubuntu-24.04".to_owned(),
+            ..base_draft(ConnectionBackend::LocalWsl)
+        };
+        let host = host_from_draft(&draft, 1, 1, None).unwrap();
+        assert_eq!(host.port, 0);
+        assert_eq!(host.keep_alive, 0);
+        assert!(host.user.is_empty());
+        assert!(host.secret.is_empty());
+        assert_eq!(host.gateway, "direct");
+        assert_eq!(host.wsl_distro.as_deref(), Some("Ubuntu-24.04"));
+    }
+
+    #[test]
+    fn editing_keeps_existing_numeric_fields_when_input_is_invalid() {
+        let draft = base_draft(ConnectionBackend::Ssh);
+        let mut existing = host_from_draft(&draft, 1, 1, None).unwrap();
+        existing.port = 2222;
+        existing.keep_alive = 45;
+        existing.rdp_mode = crate::domain::RdpConnectionMode::Compatibility;
+        let edited = HostDraft {
+            port: "not-a-port".to_owned(),
+            keep_alive: "not-a-number".to_owned(),
+            ..draft
+        };
+        let updated = host_from_draft(&edited, 1, 1, Some(&existing)).unwrap();
+        assert_eq!(updated.port, 2222);
+        assert_eq!(updated.keep_alive, 45);
+        assert_eq!(
+            updated.rdp_mode,
+            crate::domain::RdpConnectionMode::Compatibility
+        );
+    }
+
+    #[test]
+    fn managed_key_authentication_does_not_persist_a_secret() {
+        let draft = HostDraft {
+            auth: AuthKind::Key,
+            key_source: KeySource::Managed,
+            key_id: Some(3),
+            ..base_draft(ConnectionBackend::Ssh)
+        };
+        let host = host_from_draft(&draft, 1, 1, None).unwrap();
+        assert!(host.secret.is_empty());
+        assert_eq!(host.key_id, Some(3));
+    }
 }

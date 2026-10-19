@@ -3,20 +3,24 @@ use crate::domain::{find_host, Axis, ConnectionBackend, LogLevel, SessionTab, Ta
 
 impl ShellCoreApp {
     pub fn open_new_session(&mut self) {
-        let mut draft = HostDraft::default();
-        draft.folder_id = self.hosts.first().map(|folder| folder.id);
-        draft.key_id = self.saved_keys.first().map(|key| key.id);
-        draft.title = self.t("new_session_title").to_owned();
+        let draft = HostDraft {
+            folder_id: self.hosts.first().map(|folder| folder.id),
+            key_id: self.saved_keys.first().map(|key| key.id),
+            title: self.t("new_session_title").to_owned(),
+            ..Default::default()
+        };
         self.host_dialog = Some(draft);
     }
 
     pub fn open_quick_connect(&mut self) {
-        let mut draft = HostDraft::default();
-        draft.title = self.t("quick_connect").to_owned();
-        draft.folder_id = self.hosts.first().map(|folder| folder.id);
-        draft.key_id = self.saved_keys.first().map(|key| key.id);
-        draft.quick = true;
-        draft.connect_after_save = true;
+        let draft = HostDraft {
+            title: self.t("quick_connect").to_owned(),
+            folder_id: self.hosts.first().map(|folder| folder.id),
+            key_id: self.saved_keys.first().map(|key| key.id),
+            quick: true,
+            connect_after_save: true,
+            ..Default::default()
+        };
         self.host_dialog = Some(draft);
     }
 
@@ -25,7 +29,6 @@ impl ShellCoreApp {
             self.open_new_session();
             return;
         };
-        self.ensure_connected(host.id);
         self.new_terminal_tab_for_host(host.id);
     }
 
@@ -43,7 +46,6 @@ impl ShellCoreApp {
             self.toast(message);
             return;
         }
-        self.ensure_connected(host.id);
         if let Some(pane) = self.workspace.focused() {
             if let Some(existing) = pane
                 .tabs
@@ -97,6 +99,7 @@ impl ShellCoreApp {
 
     pub fn close_tab(&mut self, tab_id: u64) {
         self.rdp.close_tab(tab_id);
+        self.rdp_compat_retried.remove(&tab_id);
         self.ssh.close_tab(tab_id);
         if self.rdp_fullscreen_tab == Some(tab_id) {
             self.rdp_fullscreen_tab = None;
@@ -165,13 +168,13 @@ impl ShellCoreApp {
         if find_host(&self.hosts, host_id).is_none() {
             return;
         }
+        self.active_host_id = Some(host_id);
         if find_host(&self.hosts, host_id)
             .is_some_and(|host| host.backend == ConnectionBackend::Rdp)
         {
             self.new_rdp_tab_for_host(host_id);
             return;
         }
-        self.ensure_connected(host_id);
         let id = self.allocate_tab_id();
         let Some(host) = find_host(&self.hosts, host_id) else {
             return;
@@ -290,7 +293,7 @@ impl ShellCoreApp {
         if find_host(&self.hosts, host_id).is_none() {
             return;
         }
-        self.ensure_connected(host_id);
+        self.active_host_id = Some(host_id);
         let id = self.allocate_tab_id();
         let Some(host) = find_host(&self.hosts, host_id) else {
             return;

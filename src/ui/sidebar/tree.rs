@@ -8,13 +8,11 @@ pub(super) fn draw_folder(
     ui: &mut Ui,
     folder: &mut HostFolder,
     depth: usize,
-    palette: Palette,
-    language: Language,
-    search: &str,
-    selected: &mut Option<u64>,
-    selected_item: &mut Option<TreeItem>,
-    rename: &mut Option<TreeRename>,
+    ctx: &mut TreeContext,
 ) -> FolderAction {
+    let palette = ctx.palette;
+    let language = ctx.language;
+    let search = ctx.search;
     if !folder_matches(folder, search) {
         return FolderAction::default();
     }
@@ -30,7 +28,7 @@ pub(super) fn draw_folder(
             let (rect, response) =
                 ui.allocate_exact_size(Vec2::new(width, 26.0), Sense::click_and_drag());
             let x = rect.left() + 7.0 + depth as f32 * 14.0;
-            let is_selected = *selected_item == Some(TreeItem::Folder(folder.id));
+            let is_selected = *ctx.selected_item == Some(TreeItem::Folder(folder.id));
             if is_selected || response.hovered() {
                 ui.painter().rect_filled(
                     rect.shrink2(Vec2::new(2.0, 0.0)),
@@ -74,7 +72,8 @@ pub(super) fn draw_folder(
                 egui::pos2(x + 33.0, rect.top()),
                 egui::pos2(rect.right() - 86.0, rect.bottom()),
             );
-            if rename
+            if ctx
+                .rename
                 .as_ref()
                 .is_some_and(|rename| rename.item == TreeItem::Folder(folder.id))
             {
@@ -82,7 +81,7 @@ pub(super) fn draw_folder(
                     ui,
                     title_clip,
                     TreeItem::Folder(folder.id),
-                    rename,
+                    ctx.rename,
                     palette,
                 );
             } else {
@@ -114,15 +113,15 @@ pub(super) fn draw_folder(
     }
     if response.clicked() {
         folder.expanded = !folder.expanded;
-        *selected_item = Some(TreeItem::Folder(folder.id));
+        *ctx.selected_item = Some(TreeItem::Folder(folder.id));
         response.request_focus();
     }
     if response.has_focus() && ui.input(|input| input.key_pressed(egui::Key::F2)) {
         begin_rename(
             TreeItem::Folder(folder.id),
             &folder.title,
-            selected_item,
-            rename,
+            ctx.selected_item,
+            ctx.rename,
         );
     }
 
@@ -148,8 +147,8 @@ pub(super) fn draw_folder(
             begin_rename(
                 TreeItem::Folder(folder.id),
                 &folder.title,
-                selected_item,
-                rename,
+                ctx.selected_item,
+                ctx.rename,
             );
             ui.close();
         }
@@ -175,31 +174,12 @@ pub(super) fn draw_folder(
     if folder.expanded || !search.is_empty() {
         for host in &folder.hosts {
             if host_matches(host, search) {
-                let host_action = draw_host(
-                    ui,
-                    host,
-                    depth + 1,
-                    palette,
-                    language,
-                    selected,
-                    selected_item,
-                    rename,
-                );
+                let host_action = draw_host(ui, host, depth + 1, ctx);
                 merge_action(&mut action.action, host_action);
             }
         }
         for child in &mut folder.children {
-            let child_action = draw_folder(
-                ui,
-                child,
-                depth + 1,
-                palette,
-                language,
-                search,
-                selected,
-                selected_item,
-                rename,
-            );
+            let child_action = draw_folder(ui, child, depth + 1, ctx);
             action.visible |= child_action.visible;
             action.changed |= child_action.changed;
             merge_action(&mut action.action, child_action.action);
@@ -208,40 +188,29 @@ pub(super) fn draw_folder(
     action
 }
 
+#[derive(Default)]
 pub(super) struct FolderAction {
     pub(super) action: HostTreeAction,
     pub(super) visible: bool,
     pub(super) changed: bool,
 }
 
-impl Default for FolderAction {
-    fn default() -> Self {
-        Self {
-            action: HostTreeAction::default(),
-            visible: false,
-            changed: false,
-        }
-    }
-}
-
 pub(super) fn draw_host(
     ui: &mut Ui,
     host: &Host,
     depth: usize,
-    palette: Palette,
-    language: Language,
-    selected: &mut Option<u64>,
-    selected_item: &mut Option<TreeItem>,
-    rename: &mut Option<TreeRename>,
+    ctx: &mut TreeContext,
 ) -> HostTreeAction {
+    let palette = ctx.palette;
+    let language = ctx.language;
     let payload = HostTreeDrag {
         item: TreeItem::Host(host.id),
         title: host.name.clone(),
     };
     let width = ui.available_width();
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 24.0), Sense::click_and_drag());
-    let is_selected = *selected_item == Some(TreeItem::Host(host.id))
-        || (selected_item.is_none() && *selected == Some(host.id));
+    let is_selected = *ctx.selected_item == Some(TreeItem::Host(host.id))
+        || (ctx.selected_item.is_none() && *ctx.selected == Some(host.id));
     if is_selected {
         ui.painter().rect_filled(
             rect.shrink2(Vec2::new(2.0, 0.0)),
@@ -289,11 +258,12 @@ pub(super) fn draw_host(
         egui::pos2(rect.right() - 48.0, rect.bottom()),
     );
     let mut rename_outcome = RenameOutcome::None;
-    if rename
+    if ctx
+        .rename
         .as_ref()
         .is_some_and(|rename| rename.item == TreeItem::Host(host.id))
     {
-        rename_outcome = draw_inline_rename(ui, clip, TreeItem::Host(host.id), rename, palette);
+        rename_outcome = draw_inline_rename(ui, clip, TreeItem::Host(host.id), ctx.rename, palette);
     } else {
         ui.painter().with_clip_rect(clip).text(
             egui::pos2(x + 24.0, rect.center().y),
@@ -340,16 +310,21 @@ pub(super) fn draw_host(
     );
     response.dnd_set_drag_payload(payload);
     if response.clicked() {
-        *selected = Some(host.id);
-        *selected_item = Some(TreeItem::Host(host.id));
+        *ctx.selected = Some(host.id);
+        *ctx.selected_item = Some(TreeItem::Host(host.id));
         response.request_focus();
     }
     if response.has_focus() && ui.input(|input| input.key_pressed(egui::Key::F2)) {
-        begin_rename(TreeItem::Host(host.id), &host.name, selected_item, rename);
+        begin_rename(
+            TreeItem::Host(host.id),
+            &host.name,
+            ctx.selected_item,
+            ctx.rename,
+        );
     }
     if response.double_clicked() {
-        *selected = Some(host.id);
-        *selected_item = Some(TreeItem::Host(host.id));
+        *ctx.selected = Some(host.id);
+        *ctx.selected_item = Some(TreeItem::Host(host.id));
         return HostTreeAction {
             selected: Some(host.id),
             open_terminal: Some(host.id),

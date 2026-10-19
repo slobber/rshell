@@ -27,6 +27,15 @@ struct HostTreeAction {
     changed: bool,
 }
 
+struct TreeContext<'a> {
+    palette: Palette,
+    language: Language,
+    search: &'a str,
+    selected: &'a mut Option<u64>,
+    selected_item: &'a mut Option<TreeItem>,
+    rename: &'a mut Option<TreeRename>,
+}
+
 pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui) {
     let palette = Palette::for_mode(app.settings.theme);
     if app.settings.sidebar_collapsed {
@@ -125,22 +134,18 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
                                         empty_tree(app, ui, palette);
                                     } else {
                                         let mut any_visible = false;
-                                        let language = app.settings.language;
                                         let search = app.host_search.clone();
-                                        let active_tree_item = &mut app.active_tree_item;
-                                        let tree_rename = &mut app.tree_rename;
+                                        let mut tree_context = TreeContext {
+                                            palette,
+                                            language: app.settings.language,
+                                            search: &search,
+                                            selected: &mut selected,
+                                            selected_item: &mut app.active_tree_item,
+                                            rename: &mut app.tree_rename,
+                                        };
                                         for folder in &mut app.hosts {
-                                            let action = tree::draw_folder(
-                                                ui,
-                                                folder,
-                                                0,
-                                                palette,
-                                                language,
-                                                &search,
-                                                &mut selected,
-                                                active_tree_item,
-                                                tree_rename,
-                                            );
+                                            let action =
+                                                tree::draw_folder(ui, folder, 0, &mut tree_context);
                                             any_visible |= action.visible;
                                             tree_action.changed |= action.changed;
                                             tree::merge_action(&mut tree_action, action.action);
@@ -175,7 +180,6 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
     }
     if let Some(id) = tree_action.open_terminal {
         app.active_host_id = Some(id);
-        app.ensure_connected(id);
         app.new_terminal_tab_for_host(id);
     }
     if let Some(id) = tree_action.open_sftp {

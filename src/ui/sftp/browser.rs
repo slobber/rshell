@@ -232,8 +232,10 @@ pub(super) fn browser_pane(
         columns_state,
     );
     let table_columns = columns(width, remote, *columns_state);
-    let mut action = BrowserAction::default();
-    action.source_change = source_change;
+    let mut action = BrowserAction {
+        source_change,
+        ..Default::default()
+    };
     if navigate_requested && !path_input.trim().is_empty() {
         action.navigate = Some(path_input.trim().to_owned());
     }

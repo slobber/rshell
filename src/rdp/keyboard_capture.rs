@@ -54,12 +54,10 @@ mod platform {
                 let swallow = if vk == u32::from(VK_LWIN.0) || vk == u32::from(VK_RWIN.0) {
                     WIN_DOWN.store(down, Ordering::Relaxed);
                     true
-                } else if vk == u32::from(VK_SNAPSHOT.0) {
-                    true
-                } else if vk == u32::from(VK_TAB.0) && pressed(VK_MENU.0) {
-                    true
-                } else if vk == u32::from(VK_ESCAPE.0)
-                    && (pressed(VK_MENU.0) || pressed(VK_CONTROL.0))
+                } else if vk == u32::from(VK_SNAPSHOT.0)
+                    || (vk == u32::from(VK_TAB.0) && pressed(VK_MENU.0))
+                    || (vk == u32::from(VK_ESCAPE.0)
+                        && (pressed(VK_MENU.0) || pressed(VK_CONTROL.0)))
                 {
                     true
                 } else {

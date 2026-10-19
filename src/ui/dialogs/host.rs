@@ -348,6 +348,37 @@ pub(super) fn host_window(
                     false,
                     None,
                 );
+                ui.add_space(4.0);
+                ui.label(
+                    RichText::new(tr(lang, "rdp_target_os"))
+                        .size(13.0)
+                        .color(palette.muted),
+                );
+                ComboBox::from_id_salt("rdp_target_os")
+                    .icon(combo_icon)
+                    .selected_text(match draft.os {
+                        crate::domain::HostOs::Windows => tr(lang, "rdp_target_windows"),
+                        crate::domain::HostOs::Unknown => tr(lang, "rdp_target_auto"),
+                        _ => tr(lang, "rdp_target_linux"),
+                    })
+                    .width(ui.available_width())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut draft.os,
+                            crate::domain::HostOs::Unknown,
+                            tr(lang, "rdp_target_auto"),
+                        );
+                        ui.selectable_value(
+                            &mut draft.os,
+                            crate::domain::HostOs::Windows,
+                            tr(lang, "rdp_target_windows"),
+                        );
+                        ui.selectable_value(
+                            &mut draft.os,
+                            crate::domain::HostOs::Linux,
+                            tr(lang, "rdp_target_linux"),
+                        );
+                    });
             }
             ui.add_space(4.0);
             ui.horizontal(|ui| {

@@ -6,9 +6,7 @@ use eframe::egui::{
 };
 
 use crate::app::{DropTarget, ShellCoreApp, TabDrag};
-use crate::domain::{
-    find_pane_mut, Axis, DropZone, Pane, SessionTab, SplitNode, TabKind, Workspace,
-};
+use crate::domain::{find_pane_mut, Axis, DropZone, Pane, SessionTab, SplitNode, TabKind};
 use crate::icons::Icon;
 use crate::theme::Palette;
 use crate::ui::components::icon_button;
@@ -18,7 +16,7 @@ mod tabs;
 
 pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui) {
     let palette = Palette::for_mode(app.settings.theme);
-    let mut workspace = mem::replace(&mut app.workspace, Workspace::new());
+    let mut workspace = mem::take(&mut app.workspace);
     let mut focused_pane = workspace.focused_pane;
     app.drop_target = None;
 

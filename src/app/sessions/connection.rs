@@ -1,6 +1,7 @@
 use crate::app::ShellCoreApp;
 use crate::domain::{
-    find_host, find_host_mut, ConnectionBackend, HostStatus, LogLevel, SessionTab, TabKind,
+    find_host, find_host_mut, ConnectionBackend, HostStatus, LogLevel, RdpConnectionMode,
+    SessionTab, TabKind,
 };
 
 impl ShellCoreApp {
@@ -104,9 +105,18 @@ impl ShellCoreApp {
                 return;
             }
             self.ensure_connected(host.id);
+            self.rdp_compat_retried.remove(&tab.id);
             let desktop_width = crate::rdp::DEFAULT_DESKTOP_WIDTH;
             let desktop_height = crate::rdp::DEFAULT_DESKTOP_HEIGHT;
-            let result = self.rdp.open(tab.id, &host, desktop_width, desktop_height);
+            let result = match host.rdp_mode.resolve(host.os) {
+                RdpConnectionMode::Compatibility => {
+                    self.rdp
+                        .open_compat(tab.id, &host, desktop_width, desktop_height)
+                }
+                RdpConnectionMode::Auto | RdpConnectionMode::GraphicsPipeline => {
+                    self.rdp.open(tab.id, &host, desktop_width, desktop_height)
+                }
+            };
             if let Err(error) = result {
                 self.log(LogLevel::Error, error);
                 if let Some(host) = find_host_mut(&mut self.hosts, host.id) {

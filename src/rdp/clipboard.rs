@@ -9,9 +9,9 @@ mod platform {
     use ironrdp_client::rdp::{CliprdrBackendFactory, RdpInputSender};
     use ironrdp_cliprdr::backend::{ClipboardMessage, ClipboardMessageProxy, CliprdrBackend};
     use ironrdp_cliprdr::pdu::{
-        ClipboardFileAttributes, ClipboardFormat, ClipboardFormatId, ClipboardGeneralCapabilityFlags,
-        FileContentsFlags, FileContentsRequest, FileContentsResponse, FileDescriptor, FormatDataRequest,
-        FormatDataResponse, LockDataId,
+        ClipboardFileAttributes, ClipboardFormat, ClipboardFormatId,
+        ClipboardGeneralCapabilityFlags, FileContentsFlags, FileContentsRequest,
+        FileContentsResponse, FileDescriptor, FormatDataRequest, FormatDataResponse, LockDataId,
     };
     use ironrdp_cliprdr_native::WinClipboard;
     use ironrdp_core::impl_as_any;
@@ -47,6 +47,7 @@ mod platform {
         }
     }
 
+    #[cfg(debug_assertions)]
     fn message_kind(message: &ClipboardMessage) -> String {
         match message {
             ClipboardMessage::SendInitiateCopy(formats) => {
@@ -141,8 +142,7 @@ mod platform {
             if !opened {
                 return Vec::new();
             }
-            let Ok(handle) = GetClipboardData(ClipboardFormatId::CF_HDROP.value())
-            else {
+            let Ok(handle) = GetClipboardData(ClipboardFormatId::CF_HDROP.value()) else {
                 let _ = CloseClipboard();
                 return Vec::new();
             };
@@ -157,10 +157,7 @@ mod platform {
             let paths = parse_drop_files(data);
             let _ = GlobalUnlock(hglobal);
             let _ = CloseClipboard();
-            paths
-                .into_iter()
-                .filter_map(|path| file_entry(path))
-                .collect()
+            paths.into_iter().filter_map(file_entry).collect()
         }
     }
 
@@ -194,7 +191,9 @@ mod platform {
                     if current.is_empty() {
                         break;
                     }
-                    paths.push(PathBuf::from(String::from_utf8_lossy(&current).into_owned()));
+                    paths.push(PathBuf::from(
+                        String::from_utf8_lossy(&current).into_owned(),
+                    ));
                     current.clear();
                 } else {
                     current.push(byte);
@@ -217,11 +216,7 @@ mod platform {
         let mut descriptor = FileDescriptor::new(name)
             .with_attributes(attributes)
             .with_file_size(metadata.len());
-        if let Some(write_time) = metadata
-            .modified()
-            .ok()
-            .and_then(system_time_to_filetime)
-        {
+        if let Some(write_time) = metadata.modified().ok().and_then(system_time_to_filetime) {
             descriptor = descriptor.with_last_write_time(write_time);
         }
         Some((descriptor, path))
@@ -236,7 +231,10 @@ mod platform {
         )
     }
 
-    fn serve_file(request: &FileContentsRequest, files: &[FileEntry]) -> FileContentsResponse<'static> {
+    fn serve_file(
+        request: &FileContentsRequest,
+        files: &[FileEntry],
+    ) -> FileContentsResponse<'static> {
         let Ok(index) = usize::try_from(request.index) else {
             return FileContentsResponse::new_error(request.stream_id);
         };
@@ -261,7 +259,11 @@ mod platform {
             return FileContentsResponse::new_error(request.stream_id);
         }
         let mut buffer = Vec::new();
-        if file.take(u64::from(read_len)).read_to_end(&mut buffer).is_err() {
+        if file
+            .take(u64::from(read_len))
+            .read_to_end(&mut buffer)
+            .is_err()
+        {
             return FileContentsResponse::new_error(request.stream_id);
         }
         FileContentsResponse::new_data_response(request.stream_id, buffer)
@@ -380,8 +382,7 @@ mod platform {
         let target = unsafe { &mut *(lparam.0 as *mut Option<HWND>) };
         let mut class = [0u16; 64];
         let len = unsafe { GetClassNameW(hwnd, &mut class) };
-        if len > 0
-            && String::from_utf16_lossy(&class[..len as usize]) == "IronRDPClipboardMonitor"
+        if len > 0 && String::from_utf16_lossy(&class[..len as usize]) == "IronRDPClipboardMonitor"
         {
             *target = Some(hwnd);
             return FALSE;

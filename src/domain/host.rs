@@ -208,6 +208,48 @@ pub enum HostStatus {
     Error,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RdpConnectionMode {
+    #[default]
+    Auto,
+    GraphicsPipeline,
+    Compatibility,
+}
+
+impl RdpConnectionMode {
+    pub fn from_db(value: Option<i64>) -> Self {
+        match value {
+            Some(1) => Self::GraphicsPipeline,
+            Some(0) => Self::Compatibility,
+            _ => Self::Auto,
+        }
+    }
+
+    pub fn to_db(self) -> Option<i64> {
+        match self {
+            Self::Auto => None,
+            Self::GraphicsPipeline => Some(1),
+            Self::Compatibility => Some(0),
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::GraphicsPipeline => "graphics-pipeline",
+            Self::Compatibility => "compatibility",
+        }
+    }
+
+    pub fn resolve(self, os: HostOs) -> Self {
+        match self {
+            Self::Auto if os == HostOs::Windows => Self::Compatibility,
+            Self::Auto => Self::GraphicsPipeline,
+            mode => mode,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Host {
     pub id: u64,
@@ -228,6 +270,7 @@ pub struct Host {
     pub wsl_distro: Option<String>,
     pub status: HostStatus,
     pub latency_ms: Option<u32>,
+    pub rdp_mode: RdpConnectionMode,
     pub credentials_unavailable: bool,
 }
 
@@ -387,7 +430,7 @@ pub fn next_host_id(folders: &[HostFolder]) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::HostOs;
+    use super::{HostOs, RdpConnectionMode};
 
     #[test]
     fn detects_common_operating_systems() {
@@ -410,6 +453,26 @@ mod tests {
             HostOs::Windows
         );
         assert_eq!(HostOs::from_detection_output("Linux"), HostOs::Linux);
+    }
+
+    #[test]
+    fn resolves_rdp_mode_from_known_os() {
+        assert_eq!(
+            RdpConnectionMode::Auto.resolve(HostOs::Windows),
+            RdpConnectionMode::Compatibility
+        );
+        assert_eq!(
+            RdpConnectionMode::Auto.resolve(HostOs::Linux),
+            RdpConnectionMode::GraphicsPipeline
+        );
+        assert_eq!(
+            RdpConnectionMode::Auto.resolve(HostOs::Unknown),
+            RdpConnectionMode::GraphicsPipeline
+        );
+        assert_eq!(
+            RdpConnectionMode::Compatibility.resolve(HostOs::Linux),
+            RdpConnectionMode::Compatibility
+        );
     }
 
     #[test]

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use super::Persistence;
-use crate::domain::{AuthKind, ConnectionBackend, Host, HostFolder, HostStatus, KeySource};
+use crate::domain::{
+    AuthKind, ConnectionBackend, Host, HostFolder, HostStatus, KeySource, RdpConnectionMode,
+};
 use crate::security::{open_secret, seal_secret, DataCipher};
 use rusqlite::params;
 
@@ -53,7 +55,7 @@ impl Persistence {
             .prepare(
                 "SELECT id, folder_id, name, ip, port, auth_type,
                         username_enc, secret_enc, gateway, environment, keep_alive,
-                        backend_type, wsl_distro, key_source, key_id, os_kind
+                        backend_type, wsl_distro, key_source, key_id, os_kind, rdp_mode
                  FROM hosts ORDER BY sort_order, id",
             )
             .map_err(|error| error.to_string())?;
@@ -76,6 +78,7 @@ impl Persistence {
                     row.get::<_, String>(13)?,
                     row.get::<_, Option<i64>>(14)?,
                     row.get::<_, String>(15)?,
+                    row.get::<_, Option<i64>>(16)?,
                 ))
             })
             .map_err(|error| error.to_string())?;
@@ -97,6 +100,7 @@ impl Persistence {
                 key_source,
                 key_id,
                 os_kind,
+                rdp_mode,
             ) = row.map_err(|error| error.to_string())?;
             let auth = AuthKind::parse(&auth_type);
             let key_source = KeySource::parse(&key_source);
@@ -139,6 +143,7 @@ impl Persistence {
                     wsl_distro,
                     status: HostStatus::Offline,
                     latency_ms: None,
+                    rdp_mode: RdpConnectionMode::from_db(rdp_mode),
                     credentials_unavailable: !credentials_available,
                 });
             }
@@ -235,9 +240,9 @@ impl Persistence {
                             (id, folder_id, name, ip, port, auth_type, username_enc,
                              secret_enc, gateway, environment, keep_alive,
                              backend_type, wsl_distro, key_source, key_id,
-                             os_kind, sort_order)
+                             os_kind, rdp_mode, sort_order)
                          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11,
-                                 ?12, ?13, ?14, ?15, ?16, ?17)",
+                                 ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
                         params![
                             host.id as i64,
                             folder.id as i64,
@@ -255,6 +260,7 @@ impl Persistence {
                             host.key_source.as_str(),
                             host.key_id.map(|id| id as i64),
                             host.os.as_str(),
+                            host.rdp_mode.to_db(),
                             index as i64
                         ],
                     )

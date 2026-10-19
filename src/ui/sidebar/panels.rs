@@ -138,6 +138,20 @@ pub(super) fn properties(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) 
                             host.gateway.as_str()
                         },
                     );
+                    property_row(
+                        ui,
+                        palette,
+                        app.t("rdp_mode"),
+                        match host.rdp_mode {
+                            crate::domain::RdpConnectionMode::Auto => app.t("rdp_mode_auto"),
+                            crate::domain::RdpConnectionMode::GraphicsPipeline => {
+                                app.t("rdp_mode_graphics")
+                            }
+                            crate::domain::RdpConnectionMode::Compatibility => {
+                                app.t("rdp_mode_compat")
+                            }
+                        },
+                    );
                     property_row(ui, palette, app.t("environment"), &host.environment);
                 } else {
                     property_row(ui, palette, app.t("host"), &host.ip);

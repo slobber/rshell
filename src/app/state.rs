@@ -1,4 +1,4 @@
-use crate::domain::{AuthKind, ConnectionBackend, DropZone, KeySource};
+use crate::domain::{AuthKind, ConnectionBackend, DropZone, HostOs, KeySource};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SidebarTab {
@@ -42,6 +42,7 @@ pub struct HostDraft {
     pub title: String,
     pub name: String,
     pub backend: ConnectionBackend,
+    pub os: HostOs,
     pub wsl_distro: String,
     pub ip: String,
     pub port: String,
@@ -65,6 +66,7 @@ impl Default for HostDraft {
             title: String::new(),
             name: String::new(),
             backend: ConnectionBackend::Ssh,
+            os: HostOs::Unknown,
             wsl_distro: String::new(),
             ip: String::new(),
             port: "22".to_owned(),
@@ -83,19 +85,10 @@ impl Default for HostDraft {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct FolderDraft {
     pub name: String,
     pub parent_id: Option<u64>,
-}
-
-impl Default for FolderDraft {
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            parent_id: None,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]

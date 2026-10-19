@@ -262,8 +262,7 @@ fn hex_decode(text: &str) -> Option<Vec<u8>> {
         return None;
     }
     let mut bytes = Vec::with_capacity(text.len() / 2);
-    let mut chars = text.as_bytes().chunks_exact(2);
-    for pair in &mut chars {
+    for pair in text.as_bytes().as_chunks::<2>().0 {
         let high = (pair[0] as char).to_digit(16)?;
         let low = (pair[1] as char).to_digit(16)?;
         bytes.push(((high << 4) | low) as u8);
@@ -276,6 +275,16 @@ pub fn remember_expiry_label(until: Option<DateTime<Utc>>) -> String {
         Some(until) if until > Utc::now() => until.format("%Y-%m-%d %H:%M").to_string(),
         _ => "expired".to_owned(),
     }
+}
+
+pub fn validate_password(password: &str, confirmation: &str) -> Result<(), String> {
+    if password.chars().count() < 6 {
+        return Err("Password must contain at least 6 characters".to_owned());
+    }
+    if password != confirmation {
+        return Err("Passwords do not match".to_owned());
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -307,14 +316,4 @@ mod tests {
         assert!(unlock_with_password(&record, "wrong-password").is_err());
         assert!(record.keyring_wrap.is_none());
     }
-}
-
-pub fn validate_password(password: &str, confirmation: &str) -> Result<(), String> {
-    if password.chars().count() < 6 {
-        return Err("Password must contain at least 6 characters".to_owned());
-    }
-    if password != confirmation {
-        return Err("Passwords do not match".to_owned());
-    }
-    Ok(())
 }

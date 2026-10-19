@@ -96,6 +96,7 @@ impl Persistence {
                     key_source TEXT NOT NULL DEFAULT 'filesystem',
                     key_id INTEGER,
                     os_kind TEXT NOT NULL DEFAULT 'unknown',
+                    rdp_mode INTEGER,
                     sort_order INTEGER NOT NULL DEFAULT 0
                  );
                  CREATE INDEX IF NOT EXISTS idx_hosts_folder ON hosts(folder_id);
@@ -123,6 +124,7 @@ impl Persistence {
         self.ensure_column("hosts", "key_source", "TEXT NOT NULL DEFAULT 'filesystem'")?;
         self.ensure_column("hosts", "key_id", "INTEGER")?;
         self.ensure_column("hosts", "os_kind", "TEXT NOT NULL DEFAULT 'unknown'")?;
+        self.ensure_column("hosts", "rdp_mode", "INTEGER")?;
         self.conn
             .execute_batch("PRAGMA user_version = 5;")
             .map_err(|error| error.to_string())
@@ -260,7 +262,9 @@ impl Persistence {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{AuthKind, ConnectionBackend, Host, HostFolder, HostStatus, KeySource};
+    use crate::domain::{
+        AuthKind, ConnectionBackend, Host, HostFolder, HostStatus, KeySource, RdpConnectionMode,
+    };
     use crate::security::DataCipher;
 
     #[test]
@@ -292,6 +296,7 @@ mod tests {
             wsl_distro: None,
             status: HostStatus::Offline,
             latency_ms: None,
+            rdp_mode: RdpConnectionMode::Auto,
             credentials_unavailable: false,
         });
         {
@@ -309,7 +314,54 @@ mod tests {
         assert_eq!(loaded[0].hosts[0].user, "secret-user-value");
         assert_eq!(loaded[0].hosts[0].secret, "secret-password-value");
         assert_eq!(loaded[0].hosts[0].os, crate::domain::HostOs::Ubuntu);
-        let _ = std::fs::remove_dir_all(path.parent().unwrap().to_path_buf());
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn rdp_host_credentials_and_mode_round_trip() {
+        let unique = format!(
+            "rshell-rdp-test-{}-{}",
+            std::process::id(),
+            chrono::Utc::now().timestamp_nanos_opt().unwrap_or_default()
+        );
+        let path = std::env::temp_dir().join(unique).join("test.db");
+        let cipher = DataCipher::new([4u8; 32]);
+        let mut folder = HostFolder::new(1, "folder");
+        folder.hosts.push(Host {
+            id: 2,
+            folder_id: 1,
+            name: "rdp-host".to_owned(),
+            ip: "10.0.0.9".to_owned(),
+            port: 3389,
+            user: "Administrator".to_owned(),
+            auth: AuthKind::Password,
+            key_source: KeySource::FileSystem,
+            key_id: None,
+            secret: "saved-rdp-password".to_owned(),
+            gateway: String::new(),
+            environment: "TEST".to_owned(),
+            keep_alive: 30,
+            backend: ConnectionBackend::Rdp,
+            os: crate::domain::HostOs::Windows,
+            wsl_distro: None,
+            status: HostStatus::Offline,
+            latency_ms: None,
+            rdp_mode: RdpConnectionMode::Compatibility,
+            credentials_unavailable: false,
+        });
+        {
+            let mut persistence = Persistence::open(&path).unwrap();
+            persistence.save_host_tree(&[folder], &cipher).unwrap();
+        }
+        let persistence = Persistence::open(&path).unwrap();
+        let loaded = persistence.load_host_tree(&cipher).unwrap();
+        let host = &loaded[0].hosts[0];
+        assert_eq!(host.backend, ConnectionBackend::Rdp);
+        assert_eq!(host.auth, AuthKind::Password);
+        assert_eq!(host.secret, "saved-rdp-password");
+        assert_eq!(host.rdp_mode, RdpConnectionMode::Compatibility);
+        assert!(!host.credentials_unavailable);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 
     #[test]
@@ -335,6 +387,6 @@ mod tests {
         persistence.delete_saved_key(id).unwrap();
         assert!(persistence.list_saved_keys().unwrap().is_empty());
         drop(persistence);
-        let _ = std::fs::remove_dir_all(path.parent().unwrap().to_path_buf());
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }

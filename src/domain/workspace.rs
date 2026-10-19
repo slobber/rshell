@@ -232,7 +232,7 @@ impl Workspace {
     }
 
     pub fn find_tab(&self, tab_id: u64) -> Option<&SessionTab> {
-        fn visit<'a>(node: &'a SplitNode, tab_id: u64) -> Option<&'a SessionTab> {
+        fn visit(node: &SplitNode, tab_id: u64) -> Option<&SessionTab> {
             match node {
                 SplitNode::Leaf(pane) => pane.tabs.iter().find(|tab| tab.id == tab_id),
                 SplitNode::Split { first, second, .. } => {
@@ -244,7 +244,7 @@ impl Workspace {
     }
 
     pub fn find_tab_mut(&mut self, tab_id: u64) -> Option<&mut SessionTab> {
-        fn visit<'a>(node: &'a mut SplitNode, tab_id: u64) -> Option<&'a mut SessionTab> {
+        fn visit(node: &mut SplitNode, tab_id: u64) -> Option<&mut SessionTab> {
             match node {
                 SplitNode::Leaf(pane) => pane.tabs.iter_mut().find(|tab| tab.id == tab_id),
                 SplitNode::Split { first, second, .. } => {
@@ -259,10 +259,7 @@ impl Workspace {
         &mut self,
         session_id: u64,
     ) -> Option<(&mut SessionTab, bool)> {
-        fn visit<'a>(
-            node: &'a mut SplitNode,
-            session_id: u64,
-        ) -> Option<(&'a mut SessionTab, bool)> {
+        fn visit(node: &mut SplitNode, session_id: u64) -> Option<(&mut SessionTab, bool)> {
             match node {
                 SplitNode::Leaf(pane) => {
                     for tab in &mut pane.tabs {
@@ -386,6 +383,12 @@ impl Workspace {
     }
 }
 
+impl Default for Workspace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub fn find_pane(node: &SplitNode, id: u64) -> Option<&Pane> {
     match node {
         SplitNode::Leaf(pane) => (pane.id == id).then_some(pane),
@@ -480,6 +483,7 @@ mod tests {
             wsl_distro: None,
             status: HostStatus::Offline,
             latency_ms: None,
+            rdp_mode: Default::default(),
             credentials_unavailable: false,
         }
     }

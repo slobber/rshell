@@ -267,17 +267,17 @@ impl SshManager {
                         return;
                     }
                 };
-                runtime.block_on(run_worker(
+                runtime.block_on(run_worker(WorkerRequest {
                     tab_id,
                     host,
                     host_key,
                     expected_host_key,
                     auth,
                     mode,
-                    command_rx,
-                    event_tx,
+                    commands: command_rx,
+                    events: event_tx,
                     sftp_sessions,
-                ));
+                }));
             })
             .map_err(|error| format!("Could not start SSH worker: {error}"))?;
 
@@ -675,17 +675,30 @@ struct Worker {
     home: String,
 }
 
-async fn run_worker(
+struct WorkerRequest {
     tab_id: u64,
     host: Host,
     host_key: String,
     expected_host_key: Option<String>,
     auth: SshAuthMaterial,
     mode: SshMode,
-    mut commands: tokio_mpsc::UnboundedReceiver<SshCommand>,
+    commands: tokio_mpsc::UnboundedReceiver<SshCommand>,
     events: Sender<SshEvent>,
     sftp_sessions: Arc<Mutex<HashMap<u64, Arc<SftpSession>>>>,
-) {
+}
+
+async fn run_worker(request: WorkerRequest) {
+    let WorkerRequest {
+        tab_id,
+        host,
+        host_key,
+        expected_host_key,
+        auth,
+        mode,
+        mut commands,
+        events,
+        sftp_sessions,
+    } = request;
     let host_id = host.id;
     let started = Instant::now();
     let handler = ClientHandler {
@@ -1844,6 +1857,7 @@ mod tests {
             wsl_distro: None,
             status: HostStatus::Offline,
             latency_ms: None,
+            rdp_mode: Default::default(),
             credentials_unavailable: false,
         }
     }

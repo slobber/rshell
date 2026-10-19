@@ -358,7 +358,6 @@ pub(super) fn create_terminal_tab(app: &mut ShellCoreApp) -> Option<SessionTab> 
         app.open_new_session();
         return None;
     };
-    app.ensure_connected(host.id);
     let id = app.allocate_tab_id();
     Some(SessionTab::terminal(id, &host))
 }
@@ -368,7 +367,6 @@ pub(super) fn create_sftp_tab(app: &mut ShellCoreApp) -> Option<SessionTab> {
         app.open_new_session();
         return None;
     };
-    app.ensure_connected(host.id);
     let id = app.allocate_tab_id();
     let mut tab = SessionTab::sftp(id, &host);
     tab.remote_cwd.clear();

@@ -204,7 +204,6 @@ impl ShellCoreApp {
             return;
         };
         self.active_host_id = Some(host_id);
-        self.ensure_connected(host_id);
         match scene {
             "terminal" => self.new_terminal_tab_for_host(host_id),
             "sftp" => {

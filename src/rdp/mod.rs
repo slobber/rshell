@@ -9,7 +9,7 @@ use ironrdp_client::rdp::{RdpClient, RdpInputEvent, RdpInputSender, RdpOutputEve
 use ironrdp_pdu::input::fast_path::FastPathInputEvent;
 use smallvec::SmallVec;
 
-use crate::domain::Host;
+use crate::domain::{Host, RdpConnectionMode};
 
 pub mod clipboard;
 pub mod keyboard_capture;
@@ -55,6 +55,7 @@ struct RdpSession {
     frame_version: u64,
     requested_size: Option<(u16, u16)>,
     error: Option<String>,
+    mode: RdpConnectionMode,
     #[cfg(windows)]
     _clipboard_host: Option<clipboard::ClipboardHost>,
 }
@@ -84,7 +85,13 @@ impl RdpManager {
         desktop_width: u16,
         desktop_height: u16,
     ) -> Result<(), String> {
-        self.open_with(tab_id, host, desktop_width, desktop_height, true)
+        self.open_with(
+            tab_id,
+            host,
+            desktop_width,
+            desktop_height,
+            RdpConnectionMode::GraphicsPipeline,
+        )
     }
 
     pub fn open_compat(
@@ -94,7 +101,13 @@ impl RdpManager {
         desktop_width: u16,
         desktop_height: u16,
     ) -> Result<(), String> {
-        self.open_with(tab_id, host, desktop_width, desktop_height, false)
+        self.open_with(
+            tab_id,
+            host,
+            desktop_width,
+            desktop_height,
+            RdpConnectionMode::Compatibility,
+        )
     }
 
     fn open_with(
@@ -103,7 +116,7 @@ impl RdpManager {
         host: &Host,
         desktop_width: u16,
         desktop_height: u16,
-        graphics_pipeline: bool,
+        mode: RdpConnectionMode,
     ) -> Result<(), String> {
         let destination = Destination::from_parts(
             host.ip.clone(),
@@ -130,7 +143,7 @@ impl RdpManager {
             .with_autologon(true)
             // KRDP (KDE Plasma) closes the session during capability exchange
             // when the client does not advertise the Graphics Pipeline extension.
-            .with_graphics_pipeline(false);
+            .with_graphics_pipeline(mode == RdpConnectionMode::GraphicsPipeline);
         let domain = host.gateway.trim();
         if !domain.is_empty() && !domain.eq_ignore_ascii_case("direct") {
             builder = builder.with_domain(domain);
@@ -213,6 +226,7 @@ impl RdpManager {
                 frame_version: 0,
                 requested_size: Some((desktop_width.max(640), desktop_height.max(480))),
                 error: None,
+                mode,
                 #[cfg(windows)]
                 _clipboard_host: clipboard_host,
             },
@@ -331,6 +345,10 @@ impl RdpManager {
             .and_then(|session| session.requested_size)
     }
 
+    pub fn connection_mode(&self, tab_id: u64) -> Option<RdpConnectionMode> {
+        self.sessions.get(&tab_id).map(|session| session.mode)
+    }
+
     pub fn close_tab(&mut self, tab_id: u64) {
         self.errors.remove(&tab_id);
         if let Some(session) = self.sessions.remove(&tab_id) {
@@ -372,6 +390,12 @@ impl RdpManager {
         for tab_id in tab_ids {
             self.close_tab(tab_id);
         }
+    }
+}
+
+impl Default for RdpManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
