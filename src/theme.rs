@@ -120,6 +120,24 @@ pub struct TerminalPalette {
 }
 
 impl TerminalPalette {
+    pub fn selection_fill(self) -> Color32 {
+        let mix = |base: u8, accent: u8| ((u16::from(base) + u16::from(accent)) / 2) as u8;
+        let alpha = 150_u16;
+        let composite = |background: u8, accent: u8| {
+            ((u16::from(background) * (255 - alpha) + u16::from(accent) * alpha) / 255) as u8
+        };
+        let selection = [
+            mix(self.selection.r(), self.cursor.r()),
+            mix(self.selection.g(), self.cursor.g()),
+            mix(self.selection.b(), self.cursor.b()),
+        ];
+        Color32::from_rgb(
+            composite(self.background.r(), selection[0]),
+            composite(self.background.g(), selection[1]),
+            composite(self.background.b(), selection[2]),
+        )
+    }
+
     pub fn for_theme(theme: TerminalColorTheme) -> Self {
         match theme {
             TerminalColorTheme::RShellDark => Self {
@@ -144,6 +162,30 @@ impl TerminalPalette {
                     Color32::from_rgb(203, 166, 247),
                     Color32::from_rgb(137, 220, 235),
                     Color32::from_rgb(245, 245, 255),
+                ],
+            },
+            TerminalColorTheme::RShellLight => Self {
+                background: Color32::from_rgb(250, 252, 255),
+                foreground: Color32::from_rgb(30, 41, 59),
+                cursor: Color32::from_rgb(37, 99, 235),
+                selection: Color32::from_rgb(191, 219, 254),
+                colors: [
+                    Color32::from_rgb(51, 65, 85),
+                    Color32::from_rgb(185, 28, 28),
+                    Color32::from_rgb(21, 128, 61),
+                    Color32::from_rgb(161, 98, 7),
+                    Color32::from_rgb(29, 78, 216),
+                    Color32::from_rgb(147, 51, 234),
+                    Color32::from_rgb(14, 116, 144),
+                    Color32::from_rgb(100, 116, 139),
+                    Color32::from_rgb(100, 116, 139),
+                    Color32::from_rgb(220, 38, 38),
+                    Color32::from_rgb(22, 163, 74),
+                    Color32::from_rgb(202, 138, 4),
+                    Color32::from_rgb(37, 99, 235),
+                    Color32::from_rgb(168, 85, 247),
+                    Color32::from_rgb(8, 145, 178),
+                    Color32::from_rgb(15, 23, 42),
                 ],
             },
             TerminalColorTheme::SolarizedDark => Self {
@@ -318,7 +360,7 @@ pub fn install_theme(ctx: &egui::Context, mode: ThemeMode) {
 
 #[cfg(test)]
 mod tests {
-    use super::{install_theme, ThemeMode};
+    use super::{install_theme, TerminalColorTheme, TerminalPalette, ThemeMode};
 
     #[test]
     fn labels_are_not_selectable_by_default() {
@@ -327,5 +369,27 @@ mod tests {
         let style = ctx.style_of(eframe::egui::Theme::Dark);
         assert!(!style.interaction.selectable_labels);
         assert!(!style.interaction.multi_widget_text_select);
+    }
+
+    #[test]
+    fn terminal_selection_is_visible_in_every_theme() {
+        for theme in [
+            TerminalColorTheme::RShellDark,
+            TerminalColorTheme::RShellLight,
+            TerminalColorTheme::SolarizedDark,
+            TerminalColorTheme::Dracula,
+            TerminalColorTheme::Paper,
+        ] {
+            let palette = TerminalPalette::for_theme(theme);
+            let fill = palette.selection_fill();
+            let background = palette.background;
+            let difference = (i16::from(fill.r()) - i16::from(background.r())).unsigned_abs()
+                + (i16::from(fill.g()) - i16::from(background.g())).unsigned_abs()
+                + (i16::from(fill.b()) - i16::from(background.b())).unsigned_abs();
+            assert!(
+                difference > 100,
+                "selection fill should contrast with {theme:?}"
+            );
+        }
     }
 }

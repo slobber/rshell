@@ -4,6 +4,7 @@ pub fn title_bar(app: &mut ShellCoreApp, ui: &mut Ui) {
     let palette = Palette::for_mode(app.settings.theme);
     egui::Panel::top("window_title_bar")
         .exact_size(36.0)
+        .show_separator_line(false)
         .frame(
             Frame::new()
                 .fill(palette.canvas)

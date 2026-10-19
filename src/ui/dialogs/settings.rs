@@ -12,6 +12,7 @@ pub(super) fn settings_window(
     let mut language_changed = false;
     let mut ui_font_size_changed = false;
     let mut terminal_theme_changed = false;
+    let mut terminal_settings_changed = false;
     let mut security_action = None;
     let mut lock_now = false;
 
@@ -190,10 +191,15 @@ pub(super) fn settings_window(
                                     .size(13.0)
                                     .color(palette.text_soft),
                             );
-                            ui.add(
-                                egui::Slider::new(&mut app.settings.terminal_zoom, 0.75..=1.6)
-                                    .text(tr(lang, "zoom")),
-                            );
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut app.settings.terminal_zoom, 0.75..=1.6)
+                                        .text(tr(lang, "zoom")),
+                                )
+                                .changed()
+                            {
+                                terminal_settings_changed = true;
+                            }
                             ui.label(
                                 RichText::new(format!(
                                     "{:.0}%",
@@ -204,6 +210,36 @@ pub(super) fn settings_window(
                                 .color(palette.muted),
                             );
                         });
+                        ui.add_space(4.0);
+                        ui.horizontal(|ui| {
+                            ui.label(
+                                RichText::new(tr(lang, "command_history_limit"))
+                                    .size(13.0)
+                                    .color(palette.text_soft),
+                            );
+                            let mut limit = app.settings.command_history_limit as i32;
+                            if ui
+                                .add(
+                                    egui::DragValue::new(&mut limit)
+                                        .range(10..=10_000)
+                                        .speed(10),
+                                )
+                                .changed()
+                            {
+                                app.settings.command_history_limit = limit as usize;
+                                terminal_settings_changed = true;
+                            }
+                            ui.label(
+                                RichText::new(tr(lang, "commands_unit"))
+                                    .size(13.0)
+                                    .color(palette.muted),
+                            );
+                        });
+                        ui.label(
+                            RichText::new(tr(lang, "command_history_hint"))
+                                .size(13.0)
+                                .color(palette.muted),
+                        );
                         ui.add_space(4.0);
                         ui.horizontal(|ui| {
                             ui.label(
@@ -218,6 +254,7 @@ pub(super) fn settings_window(
                                 .show_ui(ui, |ui| {
                                     for theme in [
                                         crate::domain::TerminalColorTheme::RShellDark,
+                                        crate::domain::TerminalColorTheme::RShellLight,
                                         crate::domain::TerminalColorTheme::SolarizedDark,
                                         crate::domain::TerminalColorTheme::Dracula,
                                         crate::domain::TerminalColorTheme::Paper,
@@ -235,10 +272,15 @@ pub(super) fn settings_window(
                                     }
                                 });
                         });
-                        ui.checkbox(
-                            &mut app.settings.auto_scroll,
-                            RichText::new(tr(lang, "auto_scroll")).size(13.0),
-                        );
+                        if ui
+                            .checkbox(
+                                &mut app.settings.auto_scroll,
+                                RichText::new(tr(lang, "auto_scroll")).size(13.0),
+                            )
+                            .changed()
+                        {
+                            terminal_settings_changed = true;
+                        }
                         ui.add_enabled(
                             false,
                             egui::Checkbox::new(
@@ -398,6 +440,7 @@ pub(super) fn settings_window(
         || theme_action.is_some()
         || fonts_changed
         || ui_font_size_changed
+        || terminal_settings_changed
         || lock_now
     {
         app.persist_settings();

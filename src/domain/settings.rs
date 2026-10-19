@@ -36,6 +36,7 @@ impl ThemeMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TerminalColorTheme {
     RShellDark,
+    RShellLight,
     SolarizedDark,
     Dracula,
     Paper,
@@ -45,6 +46,7 @@ impl TerminalColorTheme {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::RShellDark => "rshell-dark",
+            Self::RShellLight => "rshell-light",
             Self::SolarizedDark => "solarized-dark",
             Self::Dracula => "dracula",
             Self::Paper => "paper",
@@ -53,6 +55,7 @@ impl TerminalColorTheme {
 
     pub fn parse(value: &str) -> Self {
         match value {
+            "rshell-light" => Self::RShellLight,
             "solarized-dark" => Self::SolarizedDark,
             "dracula" => Self::Dracula,
             "paper" => Self::Paper,
@@ -63,6 +66,7 @@ impl TerminalColorTheme {
     pub fn label(self) -> &'static str {
         match self {
             Self::RShellDark => "RShell Dark",
+            Self::RShellLight => "RShell Light",
             Self::SolarizedDark => "Solarized Dark",
             Self::Dracula => "Dracula",
             Self::Paper => "Paper",
@@ -79,6 +83,7 @@ pub struct AppSettings {
     pub ui_font_size: f32,
     pub terminal_font: String,
     pub terminal_zoom: f32,
+    pub command_history_limit: usize,
     pub sidebar_collapsed: bool,
     pub console_collapsed: bool,
     pub auto_scroll: bool,
@@ -97,6 +102,7 @@ impl Default for AppSettings {
             ui_font_size: 14.0,
             terminal_font: String::new(),
             terminal_zoom: 1.0,
+            command_history_limit: 500,
             sidebar_collapsed: false,
             console_collapsed: false,
             auto_scroll: true,

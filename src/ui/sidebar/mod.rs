@@ -18,6 +18,7 @@ mod tree;
 struct HostTreeAction {
     selected: Option<u64>,
     open_terminal: Option<u64>,
+    open_or_focus: Option<u64>,
     open_sftp: Option<u64>,
     edit: Option<u64>,
     rename_commit: Option<(TreeItem, String)>,
@@ -181,6 +182,9 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
     if let Some(id) = tree_action.open_terminal {
         app.active_host_id = Some(id);
         app.new_terminal_tab_for_host(id);
+    }
+    if let Some(id) = tree_action.open_or_focus {
+        app.open_or_focus_host(id);
     }
     if let Some(id) = tree_action.open_sftp {
         app.new_sftp_tab_for_host(id);

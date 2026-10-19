@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use crate::domain::{AuthKind, ConnectionBackend, DropZone, HostOs, KeySource};
+use crate::storage::CommandHistoryEntry;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SidebarTab {
@@ -89,6 +92,19 @@ impl Default for HostDraft {
 pub struct FolderDraft {
     pub name: String,
     pub parent_id: Option<u64>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CommandHistoryDialog {
+    pub tab_id: u64,
+    pub query: String,
+    pub entries: Vec<CommandHistoryEntry>,
+    pub current_session_uid: String,
+    pub host_ip: String,
+    pub user: String,
+    pub cwd: String,
+    pub same_path_only: bool,
+    pub selections: HashMap<String, usize>,
 }
 
 #[derive(Clone, Debug)]

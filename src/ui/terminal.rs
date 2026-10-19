@@ -73,18 +73,39 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &mut SessionTab, palette: 
                         },
                     );
                 });
-                let input = ui.input(|input| {
-                    collect_terminal_input(
-                        &input.events,
-                        tab.terminal_selection.is_some(),
-                        input.modifiers.ctrl,
-                    )
+                let has_selection = tab.terminal_selection.is_some();
+                let typed_before_enter = tab.input.clone();
+                let (input, submitted_commands) = ui.input(|input| {
+                    let collected =
+                        collect_terminal_input(&input.events, has_selection, input.modifiers.ctrl);
+                    let submitted = track_terminal_input(&input.events, &mut tab.input);
+                    (collected, submitted)
                 });
+                let mut submitted_commands = submitted_commands;
+                if submitted_commands.len() == 1 {
+                    if let Some(command) = tab
+                        .terminal
+                        .with_screen(|screen| command_from_screen(screen, &typed_before_enter))
+                        .flatten()
+                    {
+                        submitted_commands[0].text = command;
+                        submitted_commands[0].uncertain = false;
+                    } else if submitted_commands[0].uncertain {
+                        submitted_commands.clear();
+                    }
+                }
+                let submitted_commands = submitted_commands
+                    .into_iter()
+                    .filter(|command| !command.uncertain)
+                    .map(|command| command.text)
+                    .collect::<Vec<_>>();
                 copy_selection = input.copy_selection;
                 paste_from_clipboard = input.paste_from_clipboard;
                 let bytes = input.bytes;
-                if !bytes.is_empty() {
-                    app.ssh.send_input(tab.id, bytes);
+                if !bytes.is_empty() && app.ssh.send_input(tab.id, bytes) {
+                    for command in submitted_commands {
+                        app.pending_command_history.push((tab.id, command));
+                    }
                 }
             }
 
@@ -221,25 +242,6 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &mut SessionTab, palette: 
                 );
             });
 
-            if !connected {
-                let notice = Rect::from_min_size(
-                    egui::pos2(screen_rect.left() + 8.0, screen_rect.bottom() - 31.0),
-                    Vec2::new((width - 16.0).max(120.0), 24.0),
-                );
-                ui.painter().rect_filled(
-                    notice,
-                    CornerRadius::same(3),
-                    Color32::from_rgba_unmultiplied(120, 25, 45, 210),
-                );
-                ui.painter().text(
-                    egui::pos2(notice.left() + 8.0, notice.center().y),
-                    egui::Align2::LEFT_CENTER,
-                    app.t("not_connected"),
-                    FontId::proportional(crate::theme::MIN_UI_FONT_SIZE),
-                    palette.red,
-                );
-            }
-
             let status_rect = Rect::from_min_size(
                 egui::pos2(ui.cursor().left(), ui.cursor().top()),
                 Vec2::new(ui.available_width(), status_height),
@@ -269,24 +271,30 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &mut SessionTab, palette: 
                 FontId::monospace(crate::theme::MIN_UI_FONT_SIZE),
                 palette.muted,
             );
+            let (status_label, status_color) = if connected {
+                (
+                    if host.backend == ConnectionBackend::LocalWsl {
+                        "WSL"
+                    } else {
+                        app.t("live_ssh")
+                    },
+                    palette.green,
+                )
+            } else {
+                match host.status {
+                    crate::domain::HostStatus::Connecting => (app.t("connecting"), palette.amber),
+                    crate::domain::HostStatus::Error => (app.t("connection_error"), palette.red),
+                    crate::domain::HostStatus::Offline | crate::domain::HostStatus::Online => {
+                        (app.t("offline"), palette.muted)
+                    }
+                }
+            };
             ui.painter().text(
                 egui::pos2(status_rect.right() - 7.0, status_rect.center().y),
                 egui::Align2::RIGHT_CENTER,
-                if connected {
-                    if host.backend == ConnectionBackend::LocalWsl {
-                        "WSL".to_owned()
-                    } else {
-                        app.t("live_ssh").to_owned()
-                    }
-                } else {
-                    app.t("offline").to_owned()
-                },
+                status_label,
                 FontId::monospace(crate::theme::MIN_UI_FONT_SIZE),
-                if connected {
-                    palette.green
-                } else {
-                    palette.red
-                },
+                status_color,
             );
             ui.allocate_space(Vec2::new(ui.available_width(), status_height));
         });
@@ -328,12 +336,7 @@ fn paint_screen(
             ui.painter().rect_filled(
                 highlight,
                 CornerRadius::ZERO,
-                Color32::from_rgba_unmultiplied(
-                    terminal_palette.selection.r(),
-                    terminal_palette.selection.g(),
-                    terminal_palette.selection.b(),
-                    72,
-                ),
+                terminal_palette.selection_fill(),
             );
         }
     }
@@ -528,6 +531,115 @@ fn collect_terminal_input(
     input
 }
 
+struct TrackedCommand {
+    text: String,
+    uncertain: bool,
+}
+
+fn track_terminal_input(events: &[egui::Event], line: &mut String) -> Vec<TrackedCommand> {
+    let mut submitted = Vec::new();
+    let mut uncertain = false;
+    let has_paste_event = events
+        .iter()
+        .any(|event| matches!(event, egui::Event::Paste(_)));
+    for event in events {
+        match event {
+            egui::Event::Text(text) if !has_paste_event => {
+                append_command_text(line, text, &mut submitted);
+            }
+            egui::Event::Paste(text) => append_command_text(line, text, &mut submitted),
+            egui::Event::Key {
+                key,
+                pressed: true,
+                modifiers,
+                ..
+            } => match key {
+                egui::Key::Backspace => {
+                    line.pop();
+                }
+                egui::Key::Enter => {
+                    submit_command_line(line, &mut submitted, uncertain);
+                    uncertain = false;
+                }
+                egui::Key::Escape | egui::Key::C if modifiers.ctrl || modifiers.command => {
+                    line.clear();
+                    uncertain = false;
+                }
+                egui::Key::Tab
+                | egui::Key::ArrowUp
+                | egui::Key::ArrowDown
+                | egui::Key::ArrowLeft
+                | egui::Key::ArrowRight
+                | egui::Key::Home
+                | egui::Key::End
+                | egui::Key::Delete
+                | egui::Key::PageUp
+                | egui::Key::PageDown => uncertain = true,
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+    submitted
+}
+
+fn append_command_text(line: &mut String, text: &str, submitted: &mut Vec<TrackedCommand>) {
+    for character in text.chars() {
+        if character == '\r' || character == '\n' {
+            submit_command_line(line, submitted, false);
+        } else if !character.is_control() {
+            line.push(character);
+        }
+    }
+}
+
+fn submit_command_line(line: &mut String, submitted: &mut Vec<TrackedCommand>, uncertain: bool) {
+    let command = line.trim();
+    if !command.is_empty() {
+        submitted.push(TrackedCommand {
+            text: command.to_owned(),
+            uncertain,
+        });
+    }
+    line.clear();
+}
+
+fn command_from_screen(screen: &vt100::Screen, typed: &str) -> Option<String> {
+    let (row, col) = screen.cursor_position();
+    let mut line = String::new();
+    for column in 0..=col {
+        if let Some(cell) = screen.cell(row, column) {
+            if !cell.is_wide_continuation() {
+                line.push_str(cell.contents());
+            }
+        }
+    }
+    let line = line.trim_end();
+    let typed = typed.trim();
+    if !typed.is_empty() {
+        if let Some(index) = line.rfind(typed) {
+            let command = line[index..].trim();
+            if !command.is_empty() {
+                return Some(command.to_owned());
+            }
+        }
+    }
+    let mut best = None;
+    for marker in ['$', '#', '%', '>', '❯', 'λ', '→'] {
+        if let Some(index) = line.rfind(marker) {
+            let after = &line[index + marker.len_utf8()..];
+            if after.is_empty() || after.chars().next().is_some_and(char::is_whitespace) {
+                best = Some(best.map_or(index, |current: usize| current.max(index)));
+            }
+        }
+    }
+    best.and_then(|index| {
+        let marker = line[index..].chars().next()?;
+        let command = line[index + marker.len_utf8()..].trim();
+        (!command.is_empty()).then(|| command.to_owned())
+    })
+}
+
 fn paste_bytes(text: &str) -> Vec<u8> {
     text.replace("\r\n", "\r").replace('\n', "\r").into_bytes()
 }
@@ -688,6 +800,67 @@ mod tests {
 
         assert!(input.paste_from_clipboard);
         assert!(input.bytes.is_empty());
+    }
+
+    #[test]
+    fn tracks_submitted_terminal_commands() {
+        let mut line = String::new();
+        let submitted = track_terminal_input(
+            &[
+                egui::Event::Text("df -h".to_owned()),
+                key_event(egui::Key::Enter, egui::Modifiers::default()),
+            ],
+            &mut line,
+        );
+        assert_eq!(submitted[0].text, "df -h");
+        assert!(!submitted[0].uncertain);
+        assert!(line.is_empty());
+    }
+
+    #[test]
+    fn tracks_history_lines_from_multiline_paste() {
+        let mut line = String::new();
+        let submitted = track_terminal_input(
+            &[egui::Event::Paste("df -h\nfree -h\n".to_owned())],
+            &mut line,
+        );
+        assert_eq!(
+            submitted
+                .iter()
+                .map(|command| command.text.as_str())
+                .collect::<Vec<_>>(),
+            vec!["df -h", "free -h"]
+        );
+    }
+
+    #[test]
+    fn completion_and_navigation_discard_uncertain_lines() {
+        let mut line = String::new();
+        let submitted = track_terminal_input(
+            &[
+                egui::Event::Text("cd /srv".to_owned()),
+                key_event(egui::Key::Tab, egui::Modifiers::default()),
+                key_event(egui::Key::Enter, egui::Modifiers::default()),
+            ],
+            &mut line,
+        );
+        assert_eq!(submitted.len(), 1);
+        assert!(submitted[0].uncertain);
+        assert_eq!(submitted[0].text, "cd /srv");
+    }
+
+    #[test]
+    fn extracts_final_command_from_terminal_screen() {
+        let mut parser = vt100::Parser::new(4, 40, 0);
+        parser.process(b"root@host:/# cd /srv");
+        assert_eq!(
+            command_from_screen(parser.screen(), "cd /s"),
+            Some("cd /srv".to_owned())
+        );
+        assert_eq!(
+            command_from_screen(parser.screen(), ""),
+            Some("cd /srv".to_owned())
+        );
     }
 
     #[test]

@@ -4,7 +4,7 @@ use eframe::egui::{
 };
 
 use crate::app::{AppLock, ConsoleTab, ShellCoreApp};
-use crate::domain::{Axis, HostStatus, TransferDirection};
+use crate::domain::{Axis, TransferDirection};
 use crate::icons::Icon;
 use crate::theme::Palette;
 use crate::ui::components::{combo_icon, icon_button, labeled_icon_button, status_dot};

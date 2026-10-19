@@ -1,4 +1,5 @@
 mod bootstrap;
+mod command_history;
 mod file_actions;
 mod key_ops;
 mod persistence;
@@ -28,9 +29,9 @@ use crate::storage::{Persistence, SavedKeySummary, SecurityRecord};
 use crate::ui;
 
 pub use state::{
-    AppLock, ChmodDialog, ConsoleTab, DropTarget, EditorDialog, FolderDraft, FontCache, HostDraft,
-    HostTreeDrag, LogSelection, Md5Dialog, SecurityAction, SidebarTab, TabDrag, TreeItem,
-    TreeRename,
+    AppLock, ChmodDialog, CommandHistoryDialog, ConsoleTab, DropTarget, EditorDialog, FolderDraft,
+    FontCache, HostDraft, HostTreeDrag, LogSelection, Md5Dialog, SecurityAction, SidebarTab,
+    TabDrag, TreeItem, TreeRename,
 };
 
 pub struct ShellCoreApp {
@@ -67,6 +68,7 @@ pub struct ShellCoreApp {
     pub broadcast: bool,
     pub toast: Option<(String, Instant)>,
     pub last_tick: Instant,
+    pub copy_feedback: Option<(u64, Instant)>,
     pub drag: Option<TabDrag>,
     pub drop_target: Option<DropTarget>,
     pub pending_split: Option<Axis>,
@@ -77,6 +79,8 @@ pub struct ShellCoreApp {
     pub folder_dialog: Option<FolderDraft>,
     pub folder_delete: Option<u64>,
     pub host_delete: Option<u64>,
+    pub command_history: Option<CommandHistoryDialog>,
+    pub pending_command_history: Vec<(u64, String)>,
     pub settings_open: bool,
     pub keyring_open: bool,
     pub snippets_open: bool,
@@ -169,6 +173,7 @@ impl eframe::App for ShellCoreApp {
         ui::sidebar::draw(self, ui);
         ui::console::draw(self, ui);
         ui::workspace::draw(self, ui);
+        self.flush_command_history();
         ui::dialogs::draw_modals(self, &ctx);
         ui::shell::resize_handles(self, &ctx);
         ui::dialogs::drag_ghost(self, &ctx);

@@ -18,9 +18,12 @@ impl SecurityRecord {
     }
 }
 
+mod history;
 mod hosts;
 mod keys;
 mod known_hosts;
+
+pub use history::{CommandHistoryEntry, CommandHistoryRecord};
 
 #[derive(Clone, Debug)]
 pub struct SavedKeySummary {
@@ -112,6 +115,19 @@ impl Persistence {
                     fingerprint TEXT NOT NULL,
                     updated_at INTEGER NOT NULL
                  );
+                 CREATE TABLE IF NOT EXISTS command_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_uid TEXT NOT NULL,
+                    host_ip TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    cwd TEXT NOT NULL,
+                    command_enc BLOB NOT NULL,
+                    created_at INTEGER NOT NULL
+                 );
+                 CREATE INDEX IF NOT EXISTS idx_command_history_session
+                    ON command_history(session_uid, id);
+                 CREATE INDEX IF NOT EXISTS idx_command_history_context
+                    ON command_history(host_ip, username, cwd, id);
                  CREATE TABLE IF NOT EXISTS app_settings (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL

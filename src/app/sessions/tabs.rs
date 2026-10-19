@@ -32,6 +32,31 @@ impl ShellCoreApp {
         self.new_terminal_tab_for_host(host.id);
     }
 
+    pub fn open_or_focus_host(&mut self, host_id: u64) {
+        let Some(host) = find_host(&self.hosts, host_id).cloned() else {
+            return;
+        };
+        let kind = match host.backend {
+            ConnectionBackend::Rdp => TabKind::Rdp,
+            ConnectionBackend::Ssh | ConnectionBackend::LocalWsl => TabKind::Terminal,
+        };
+        let active_matches = self
+            .workspace
+            .active_tab()
+            .is_some_and(|tab| tab.host_id == host_id && tab.kind == kind);
+        if active_matches {
+            self.active_host_id = Some(host_id);
+            self.new_terminal_tab_for_host(host_id);
+            return;
+        }
+        if let Some(tab_id) = latest_host_tab(&self.workspace, host_id, kind) {
+            self.activate_tab(tab_id);
+        } else {
+            self.active_host_id = Some(host_id);
+            self.new_terminal_tab_for_host(host_id);
+        }
+    }
+
     pub fn new_sftp_tab(&mut self) {
         let Some(host) = self.active_host_clone() else {
             self.open_new_session();
@@ -101,6 +126,13 @@ impl ShellCoreApp {
         self.rdp.close_tab(tab_id);
         self.rdp_compat_retried.remove(&tab_id);
         self.ssh.close_tab(tab_id);
+        if self
+            .command_history
+            .as_ref()
+            .is_some_and(|dialog| dialog.tab_id == tab_id)
+        {
+            self.command_history = None;
+        }
         if self.rdp_fullscreen_tab == Some(tab_id) {
             self.rdp_fullscreen_tab = None;
         }
@@ -332,6 +364,15 @@ impl ShellCoreApp {
     }
 }
 
+fn latest_host_tab(workspace: &Workspace, host_id: u64, kind: TabKind) -> Option<u64> {
+    workspace
+        .all_tabs()
+        .into_iter()
+        .filter(|tab| tab.host_id == host_id && tab.kind == kind)
+        .max_by_key(|tab| tab.id)
+        .map(|tab| tab.id)
+}
+
 pub fn refresh_local_directory(tab: &mut SessionTab) {
     match crate::local_fs::list(&tab.local_cwd) {
         Ok((path, entries)) => {
@@ -344,5 +385,61 @@ pub fn refresh_local_directory(tab: &mut SessionTab) {
             tab.local_entries.clear();
             tab.local_error = Some(error);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::{AuthKind, Host, HostOs, HostStatus, KeySource};
+
+    fn host(id: u64, backend: ConnectionBackend, ip: &str) -> Host {
+        Host {
+            id,
+            folder_id: 1,
+            name: format!("host-{id}"),
+            ip: ip.to_owned(),
+            port: if backend == ConnectionBackend::Rdp {
+                3389
+            } else {
+                22
+            },
+            user: "user".to_owned(),
+            auth: AuthKind::Password,
+            key_source: KeySource::FileSystem,
+            key_id: None,
+            secret: "password".to_owned(),
+            gateway: "direct".to_owned(),
+            environment: "TEST".to_owned(),
+            keep_alive: 30,
+            backend,
+            os: if backend == ConnectionBackend::Rdp {
+                HostOs::Unknown
+            } else {
+                HostOs::Linux
+            },
+            wsl_distro: None,
+            status: HostStatus::Offline,
+            latency_ms: None,
+            rdp_mode: Default::default(),
+            credentials_unavailable: false,
+        }
+    }
+
+    #[test]
+    fn latest_host_tab_matches_host_and_protocol() {
+        let ssh = host(1, ConnectionBackend::Ssh, "10.0.0.1");
+        let rdp = host(2, ConnectionBackend::Rdp, "10.0.0.1");
+        let mut workspace = Workspace::new();
+        let pane = workspace.focused_mut().unwrap();
+        pane.add_tab(SessionTab::terminal(10, &ssh));
+        pane.add_tab(SessionTab::sftp(20, &ssh));
+        pane.add_tab(SessionTab::rdp(30, &rdp));
+        pane.add_tab(SessionTab::terminal(40, &ssh));
+
+        assert_eq!(latest_host_tab(&workspace, 1, TabKind::Terminal), Some(40));
+        assert_eq!(latest_host_tab(&workspace, 1, TabKind::Sftp), Some(20));
+        assert_eq!(latest_host_tab(&workspace, 2, TabKind::Rdp), Some(30));
+        assert_eq!(latest_host_tab(&workspace, 2, TabKind::Terminal), None);
     }
 }

@@ -158,11 +158,25 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &SessionTab, palette: Pale
     }
 
     if response.hovered() {
-        let scroll = ui.ctx().input(|input| input.smooth_scroll_delta.y);
-        if scroll.abs() > 0.1 {
-            if let Some(pos) = response.hover_pos() {
+        let wheel_events = ui.ctx().input(|input| {
+            input
+                .events
+                .iter()
+                .filter_map(|event| match event {
+                    egui::Event::MouseWheel { unit, delta, .. } if delta.y.abs() > 0.001 => {
+                        Some((*unit, delta.y))
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        });
+        if let Some(pos) = response.hover_pos() {
+            for (unit, delta_y) in wheel_events {
+                let units = wheel_rotation_units(unit, delta_y);
+                if units == 0 {
+                    continue;
+                }
                 let (x, y) = remote_point(pos);
-                let units = (scroll / 40.0).round().clamp(-10.0, 10.0) as i16;
                 app.rdp.send_input(
                     tab.id,
                     SmallVec::from_slice(&[FastPathInputEvent::MouseEvent(MousePdu {
@@ -262,6 +276,17 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &SessionTab, palette: Pale
         FontId::monospace(crate::theme::STATUS_FONT_SIZE),
         palette.muted,
     );
+}
+
+fn wheel_rotation_units(unit: egui::MouseWheelUnit, delta: f32) -> i16 {
+    let units = match unit {
+        egui::MouseWheelUnit::Line | egui::MouseWheelUnit::Page => (delta * 100.0).round(),
+        egui::MouseWheelUnit::Point => delta.round(),
+    } as i16;
+    units.clamp(
+        *MousePdu::WHEEL_ROTATION_RANGE.start(),
+        *MousePdu::WHEEL_ROTATION_RANGE.end(),
+    )
 }
 
 fn send_unicode(app: &mut ShellCoreApp, tab_id: u64, code: u16) {
@@ -448,4 +473,18 @@ fn is_extended_key(key: egui::Key) -> bool {
             | Key::ArrowLeft
             | Key::ArrowRight
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::wheel_rotation_units;
+    use eframe::egui::MouseWheelUnit;
+
+    #[test]
+    fn maps_wheel_lines_to_rdp_rotation_units() {
+        assert_eq!(wheel_rotation_units(MouseWheelUnit::Line, 1.0), 100);
+        assert_eq!(wheel_rotation_units(MouseWheelUnit::Line, -1.0), -100);
+        assert_eq!(wheel_rotation_units(MouseWheelUnit::Point, 3.0), 3);
+        assert_eq!(wheel_rotation_units(MouseWheelUnit::Line, 4.0), 255);
+    }
 }

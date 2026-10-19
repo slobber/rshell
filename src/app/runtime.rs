@@ -72,6 +72,7 @@ impl ShellCoreApp {
             self.folder_dialog = None;
             self.folder_delete = None;
             self.host_delete = None;
+            self.command_history = None;
             self.editor_dialog = None;
             self.chmod_dialog = None;
             self.md5_dialog = None;

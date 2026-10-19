@@ -327,7 +327,7 @@ pub(super) fn draw_host(
         *ctx.selected_item = Some(TreeItem::Host(host.id));
         return HostTreeAction {
             selected: Some(host.id),
-            open_terminal: Some(host.id),
+            open_or_focus: Some(host.id),
             rename_commit: match rename_outcome {
                 RenameOutcome::Commit(value) => Some((TreeItem::Host(host.id), value)),
                 _ => None,
@@ -403,6 +403,7 @@ pub(super) fn draw_host(
 pub(super) fn merge_action(target: &mut HostTreeAction, source: HostTreeAction) {
     target.selected = source.selected.or(target.selected);
     target.open_terminal = source.open_terminal.or(target.open_terminal);
+    target.open_or_focus = source.open_or_focus.or(target.open_or_focus);
     target.open_sftp = source.open_sftp.or(target.open_sftp);
     target.edit = source.edit.or(target.edit);
     target.rename_commit = source

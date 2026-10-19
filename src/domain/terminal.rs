@@ -32,10 +32,12 @@ impl Default for SftpColumnWidths {
 #[derive(Clone, Debug)]
 pub struct SessionTab {
     pub id: u64,
+    pub session_uid: String,
     pub kind: TabKind,
     pub host_id: u64,
     pub title: String,
     pub input: String,
+    pub last_command: String,
     pub cwd: String,
     pub local_cwd: String,
     pub remote_cwd: String,
@@ -67,10 +69,12 @@ impl SessionTab {
     pub fn terminal(id: u64, host: &Host) -> Self {
         Self {
             id,
+            session_uid: new_session_uid(),
             kind: TabKind::Terminal,
             host_id: host.id,
             title: host.name.clone(),
             input: String::new(),
+            last_command: String::new(),
             cwd: "~".to_owned(),
             local_cwd: "~".to_owned(),
             remote_cwd: "/".to_owned(),
@@ -102,10 +106,12 @@ impl SessionTab {
     pub fn sftp(id: u64, host: &Host) -> Self {
         Self {
             id,
+            session_uid: new_session_uid(),
             kind: TabKind::Sftp,
             host_id: host.id,
             title: host.name.clone(),
             input: String::new(),
+            last_command: String::new(),
             cwd: "~".to_owned(),
             local_cwd: crate::local_fs::display_path(&crate::local_fs::home_dir()),
             remote_cwd: "/".to_owned(),
@@ -139,6 +145,18 @@ impl SessionTab {
         tab.kind = TabKind::Rdp;
         tab
     }
+}
+
+fn new_session_uid() -> String {
+    let mut bytes = [0_u8; 16];
+    if getrandom::fill(&mut bytes).is_ok() {
+        return bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default();
+    format!("{}-{nanos}", std::process::id())
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -178,17 +178,21 @@ pub(super) fn tab_strip(
                     *focused_pane = pane.id;
                     app.pending_split = Some(Axis::Horizontal);
                 }
-                if icon_button(
-                    ui,
-                    palette,
-                    Icon::Search,
-                    13.0,
-                    app.t("terminal_search"),
-                    false,
-                )
-                .clicked()
-                {
-                    app.command_palette_open = true;
+                if let Some((_, TabKind::Terminal)) = active_tab {
+                    if icon_button(
+                        ui,
+                        palette,
+                        Icon::Clock,
+                        13.0,
+                        app.t("command_history"),
+                        false,
+                    )
+                    .clicked()
+                    {
+                        if let Some(tab) = pane.active_tab() {
+                            app.open_command_history_for_tab(tab);
+                        }
+                    }
                 }
             },
         );

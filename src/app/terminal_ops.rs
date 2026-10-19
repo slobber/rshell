@@ -43,6 +43,8 @@ impl ShellCoreApp {
             );
             return;
         }
+        self.pending_command_history
+            .push((tab_id, command_label.clone()));
 
         if self.broadcast {
             let target_ids = self

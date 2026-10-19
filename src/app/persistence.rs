@@ -54,6 +54,9 @@ pub(super) fn apply_settings_map(settings: &mut AppSettings, values: &HashMap<St
     if let Some(value) = values.get("terminal_zoom") {
         settings.terminal_zoom = value.parse::<f32>().unwrap_or(1.0).clamp(0.75, 1.6);
     }
+    if let Some(value) = values.get("command_history_limit") {
+        settings.command_history_limit = value.parse::<usize>().unwrap_or(500).clamp(10, 10_000);
+    }
     if let Some(value) = values.get("sidebar_collapsed") {
         settings.sidebar_collapsed = value == "true";
     }
@@ -91,6 +94,10 @@ fn settings_map(settings: &AppSettings) -> HashMap<String, String> {
         (
             "terminal_zoom".to_owned(),
             format!("{:.2}", settings.terminal_zoom),
+        ),
+        (
+            "command_history_limit".to_owned(),
+            settings.command_history_limit.to_string(),
         ),
         (
             "sidebar_collapsed".to_owned(),
@@ -137,14 +144,22 @@ mod tests {
 
         apply_settings_map(
             &mut settings,
-            &HashMap::from([("ui_font_size".to_owned(), "99".to_owned())]),
+            &HashMap::from([
+                ("ui_font_size".to_owned(), "99".to_owned()),
+                ("command_history_limit".to_owned(), "99999".to_owned()),
+            ]),
         );
         assert_eq!(settings.ui_font_size, crate::theme::UI_FONT_SIZE_MAX);
+        assert_eq!(settings.command_history_limit, 10_000);
 
         apply_settings_map(
             &mut settings,
             &HashMap::from([("ui_font_size".to_owned(), "1".to_owned())]),
         );
         assert_eq!(settings.ui_font_size, crate::theme::UI_FONT_SIZE_MIN);
+        assert_eq!(
+            settings_map(&settings).get("command_history_limit"),
+            Some(&"10000".to_owned())
+        );
     }
 }

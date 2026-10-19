@@ -1,4 +1,5 @@
 use super::*;
+use std::time::{Duration, Instant};
 
 pub fn quick_ribbon(app: &mut ShellCoreApp, ui: &mut Ui) {
     let palette = Palette::for_mode(app.settings.theme);
@@ -9,13 +10,17 @@ pub fn quick_ribbon(app: &mut ShellCoreApp, ui: &mut Ui) {
         .map(|tab| (tab.id, tab.title.clone()))
         .collect::<Vec<_>>();
     let current_tab = app.workspace.active_tab().cloned();
-    let current_host = app.active_host_clone();
+    let current_host = current_tab
+        .as_ref()
+        .and_then(|tab| crate::domain::find_host(&app.hosts, tab.host_id).cloned())
+        .or_else(|| app.active_host_clone());
     let connected = current_host
         .as_ref()
         .is_some_and(|host| app.connected_hosts.contains(&host.id));
 
     egui::Panel::top("quick_ribbon")
         .exact_size(36.0)
+        .show_separator_line(false)
         .frame(
             Frame::new()
                 .fill(palette.panel)
@@ -114,64 +119,52 @@ pub fn quick_ribbon(app: &mut ShellCoreApp, ui: &mut Ui) {
                 }
 
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.label(
-                        RichText::new(app.t("scrollback_lines"))
-                            .size(crate::theme::STATUS_FONT_SIZE)
-                            .monospace()
-                            .color(palette.muted),
-                    );
-                    let transport_label = if connected {
-                        if current_host.as_ref().is_some_and(|host| {
-                            host.backend == crate::domain::ConnectionBackend::LocalWsl
-                        }) {
-                            app.t("live_wsl")
-                        } else if current_host.as_ref().is_some_and(|host| {
-                            host.backend == crate::domain::ConnectionBackend::Rdp
-                        }) {
-                            app.t("live_rdp")
-                        } else {
-                            app.t("live_ssh")
-                        }
-                    } else {
-                        app.t("no_transport")
-                    };
-                    ui.label(
-                        RichText::new(transport_label)
-                            .size(crate::theme::STATUS_FONT_SIZE)
-                            .monospace()
-                            .color(if connected {
-                                palette.cyan
-                            } else {
-                                palette.muted
-                            }),
-                    );
                     if let Some(host) = &current_host {
+                        let address = if host.user.trim().is_empty() {
+                            host.address()
+                        } else {
+                            format!("{}@{}:{}", host.user, host.ip, host.port)
+                        };
+                        let active_tab_id = current_tab.as_ref().map(|tab| tab.id);
+                        let copied = active_tab_id.is_some_and(|tab_id| {
+                            app.copy_feedback.as_ref().is_some_and(|(copied_tab, at)| {
+                                *copied_tab == tab_id && at.elapsed() < Duration::from_secs(1)
+                            })
+                        });
+                        let copy = icon_button(
+                            ui,
+                            palette,
+                            if copied {
+                                Icon::CircleCheck
+                            } else {
+                                Icon::Copy
+                            },
+                            13.0,
+                            if copied {
+                                app.t("copied")
+                            } else {
+                                app.t("copy_address")
+                            },
+                            copied,
+                        )
+                        .clicked();
+                        ui.add_space(4.0);
                         ui.label(
-                            RichText::new(status_text(host.status, app))
+                            RichText::new(&address)
                                 .size(crate::theme::STATUS_FONT_SIZE)
                                 .monospace()
-                                .color(status_color(host.status, palette)),
+                                .color(palette.text_soft),
                         );
+                        if copy {
+                            if let Some(tab_id) = active_tab_id {
+                                app.copy_feedback = Some((tab_id, Instant::now()));
+                                ui.ctx().request_repaint();
+                                ui.ctx().request_repaint_after(Duration::from_secs(1));
+                            }
+                            ui.ctx().copy_text(address);
+                        }
                     }
                 });
             });
         });
-}
-
-fn status_text(status: HostStatus, app: &ShellCoreApp) -> &'static str {
-    match status {
-        HostStatus::Offline => app.t("not_connected"),
-        HostStatus::Connecting => app.t("connecting"),
-        HostStatus::Online => app.t("connected"),
-        HostStatus::Error => app.t("connection_error"),
-    }
-}
-
-fn status_color(status: HostStatus, palette: Palette) -> Color32 {
-    match status {
-        HostStatus::Online => palette.green,
-        HostStatus::Connecting => palette.amber,
-        HostStatus::Offline => palette.muted,
-        HostStatus::Error => palette.red,
-    }
 }
