@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 description = "RShell - a cross-platform SSH and SFTP workbench"
 license = "MIT"
+authors = ["slobber"]
+repository = "https://github.com/slobber/rshell"
+homepage = "https://github.com/slobber/rshell"
 
 [lib]
 name = "rshell"

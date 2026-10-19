@@ -1,5 +1,7 @@
 /target/
 /artifacts/
+/dist/
+/docs/
 *.db-shm
 *.db-wal
 .cargo/

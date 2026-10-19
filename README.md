@@ -4,10 +4,6 @@ RShell 是一个基于 Rust + egui 的跨平台 SSH / SFTP / WSL / RDP 工作台
 
 当前版本已经接入真实 SSH/SFTP、Windows WSL 本地终端和 RDP 远程桌面：终端使用 VT100 屏幕缓冲呈现输出，SFTP 使用真实的远端目录、上传、下载、编辑、chmod 与 MD5 校验流程，RDP 使用 IronRDP 帧缓冲渲染。
 
-![RShell workbench](docs/rshell-workbench.png)
-
-堡垒机（深信服 TUI 菜单）会话的冻结设计见 [docs/bastion-design.md](docs/bastion-design.md)。
-
 ## 已实现
 
 - 无边框桌面窗口、应用内菜单栏、快捷键与窗口缩放控制
@@ -52,6 +48,17 @@ Windows 可执行文件位于：
 ```text
 target\release\rshell.exe
 ```
+
+## 安装包
+
+GitHub Actions 会构建 Windows x64（EXE、MSI、ZIP）、Windows ARM64
+（EXE、ZIP）、Linux x64/ARM64（DEB、RPM）和 macOS ARM64（DMG）。
+推送 `v*` 标签会创建 GitHub Release；也可以在 Actions 中手动运行
+`package` 工作流。
+
+Windows ARM64 暂不提供 MSI：当前使用的 WiX 3 不支持 ARM64 安装包格式。
+
+打包脚本位于 `scripts/`。
 
 ## 模块结构
 
@@ -149,7 +156,7 @@ $env:RSHELL_DEBUG_SCENE = "sftp"   # terminal | sftp | split
 
 - Jump host / ProxyJump、端口转发隧道与断线自动重连
 - 带口令私钥的解锁提示
-- Windows/macOS 任务栏进度联动、安装器与自动更新
+- Windows/macOS 任务栏进度联动、安装器代码签名与自动更新
 
 RDP 使用独立的 IronRDP 连接器，后续还需要补齐剪贴板、动态尺寸协商、远程指针位图和音频等桌面能力。旧数据库中的 PSRP 主机会在加载时迁移为 RDP。
 
