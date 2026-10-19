@@ -41,27 +41,22 @@ jobs:
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            shell: pwsh
-            command: ./scripts/package-windows.ps1 -Arch x64
+            command: pwsh -NoProfile -File ./scripts/package-windows.ps1 -Arch x64
           - name: windows-aarch64
             os: windows-11-arm
             target: aarch64-pc-windows-msvc
-            shell: pwsh
-            command: ./scripts/package-windows.ps1 -Arch arm64
+            command: pwsh -NoProfile -File ./scripts/package-windows.ps1 -Arch arm64
           - name: linux-x64
             os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
-            shell: bash
             command: bash ./scripts/package-linux.sh x64
           - name: linux-aarch64
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            shell: bash
             command: bash ./scripts/package-linux.sh arm64
           - name: macos-aarch64
             os: macos-14
             target: aarch64-apple-darwin
-            shell: bash
             command: bash ./scripts/package-macos.sh
     steps:
       - uses: actions/checkout@v4
@@ -85,7 +80,7 @@ jobs:
 
       - name: Build and package
         run: ${{ matrix.command }}
-        shell: ${{ matrix.shell }}
+        shell: bash
 
       - uses: actions/upload-artifact@v4
         with:
