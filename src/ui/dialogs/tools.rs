@@ -50,6 +50,13 @@ pub(super) fn about_window(
                         .size(13.0)
                         .color(palette.text_soft),
                 );
+                ui.add_space(3.0);
+                ui.hyperlink_to(
+                    RichText::new("github.com/slobber/rshell")
+                        .size(13.0)
+                        .monospace(),
+                    "https://github.com/slobber/rshell",
+                );
                 ui.add_space(10.0);
                 ui.label(
                     RichText::new("Tabler Icons · MIT License · Simple Icons · CC0")
