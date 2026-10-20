@@ -59,25 +59,42 @@ impl ShellCoreApp {
             }
             return;
         }
-        if ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape)) {
-            if self.tree_rename.take().is_some() {
+        let dialog_open = self.settings_open
+            || self.keyring_open
+            || self.snippets_open
+            || self.about_open
+            || self.command_palette_open
+            || self.host_dialog.is_some()
+            || self.folder_dialog.is_some()
+            || self.folder_delete.is_some()
+            || self.host_delete.is_some()
+            || self.command_history.is_some()
+            || self.editor_dialog.is_some()
+            || self.chmod_dialog.is_some()
+            || self.md5_dialog.is_some();
+        if self.tree_rename.is_some() || dialog_open {
+            if ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape)) {
+                if self.tree_rename.take().is_some() {
+                    return;
+                }
+                self.settings_open = false;
+                self.keyring_open = false;
+                self.snippets_open = false;
+                self.about_open = false;
+                self.command_palette_open = false;
+                self.host_dialog = None;
+                self.folder_dialog = None;
+                self.folder_delete = None;
+                self.host_delete = None;
+                self.command_history = None;
+                self.editor_dialog = None;
+                self.chmod_dialog = None;
+                self.md5_dialog = None;
                 return;
             }
-            self.settings_open = false;
-            self.keyring_open = false;
-            self.snippets_open = false;
-            self.about_open = false;
-            self.command_palette_open = false;
-            self.host_dialog = None;
-            self.folder_dialog = None;
-            self.folder_delete = None;
-            self.host_delete = None;
-            self.command_history = None;
-            self.editor_dialog = None;
-            self.chmod_dialog = None;
-            self.md5_dialog = None;
-            return;
         }
+        // Escape is left in the event stream when no dialog is open so the
+        // terminal and RDP surfaces can forward it to the remote session.
         if ctx.egui_wants_keyboard_input() {
             if ctx.input_mut(|input| {
                 input.consume_key(

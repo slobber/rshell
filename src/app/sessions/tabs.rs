@@ -195,7 +195,7 @@ impl ShellCoreApp {
                 }
             }
         }
-        if kind == Some(TabKind::Terminal) {
+        if matches!(kind, Some(TabKind::Terminal | TabKind::Rdp)) {
             self.pending_focus_tab = Some(tab_id);
         } else {
             self.pending_focus_tab = None;

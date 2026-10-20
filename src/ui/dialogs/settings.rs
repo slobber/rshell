@@ -415,14 +415,10 @@ pub(super) fn settings_window(
                     ui.add_sized(
                         [label_width, 18.0],
                         egui::Label::new(
-                            RichText::new(format!(
-                                "{}: {}",
-                                tr(lang, "config_warning"),
-                                config_path
-                            ))
-                            .size(13.0)
-                            .monospace()
-                            .color(palette.muted),
+                            RichText::new(format!("{}: {}", tr(lang, "config_file"), config_path))
+                                .size(13.0)
+                                .monospace()
+                                .color(palette.muted),
                         )
                         .truncate(),
                     )

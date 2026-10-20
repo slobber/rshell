@@ -203,7 +203,7 @@ pub(super) fn tab_strip(
         pane.active = index;
         *focused_pane = pane.id;
         app.active_host_id = Some(tab_id_host(pane, tab_id));
-        if kind == Some(TabKind::Terminal) {
+        if matches!(kind, Some(TabKind::Terminal | TabKind::Rdp)) {
             app.pending_focus_tab = Some(tab_id);
         } else {
             app.pending_focus_tab = None;
