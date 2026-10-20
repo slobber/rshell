@@ -77,9 +77,43 @@ Compress-Archive -Force `
     -Path "target/$target/release/rshell.exe" `
     -DestinationPath (Join-Path "dist" $portableName)
 
+if ($Arch -eq "x64") {
+    $staticExeName = "rshell-$version-windows-static-$Arch.exe"
+    $previousRustFlags = $env:RUSTFLAGS
+    $previousTargetDir = $env:CARGO_TARGET_DIR
+    try {
+        $staticFlag = "-C target-feature=+crt-static"
+        $env:RUSTFLAGS = if ($previousRustFlags) {
+            "$previousRustFlags $staticFlag"
+        } else {
+            $staticFlag
+        }
+        $env:CARGO_TARGET_DIR = "target/static"
+        cargo build --release --target $target --bin rshell
+    }
+    finally {
+        if ($null -eq $previousRustFlags) {
+            Remove-Item Env:RUSTFLAGS -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:RUSTFLAGS = $previousRustFlags
+        }
+        if ($null -eq $previousTargetDir) {
+            Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:CARGO_TARGET_DIR = $previousTargetDir
+        }
+    }
+    Copy-Item -Force `
+        "target/static/$target/release/rshell.exe" `
+        (Join-Path "dist" $staticExeName)
+}
+
 Write-Host "Created: dist/$portableExeName"
 Write-Host "Created: dist/$installerName"
 if ($Arch -eq "x64") {
     Write-Host "Created: dist/$msiName"
+    Write-Host "Created: dist/$staticExeName"
 }
 Write-Host "Created: dist/$portableName"
