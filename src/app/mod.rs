@@ -69,6 +69,7 @@ pub struct ShellCoreApp {
     pub toast: Option<(String, Instant)>,
     pub last_tick: Instant,
     pub copy_feedback: Option<(u64, Instant)>,
+    pub config_copy_feedback: Option<Instant>,
     pub drag: Option<TabDrag>,
     pub drop_target: Option<DropTarget>,
     pub pending_split: Option<Axis>,

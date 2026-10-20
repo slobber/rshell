@@ -91,6 +91,7 @@ impl ShellCoreApp {
             toast: None,
             last_tick: Instant::now(),
             copy_feedback: None,
+            config_copy_feedback: None,
             drag: None,
             drop_target: None,
             pending_split: None,
