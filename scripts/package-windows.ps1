@@ -50,7 +50,7 @@ $installer = Get-ChildItem "dist" -Filter "rshell_*_*-setup.exe" |
 if (-not $installer) {
     throw "cargo-packager did not produce an NSIS installer"
 }
-$installerName = "rshell-$version-windows-$Arch.exe"
+$installerName = "rshell-$version-windows-$Arch-setup.exe"
 Move-Item -Force $installer.FullName (Join-Path "dist" $installerName)
 
 if ($Arch -eq "x64") {
@@ -67,11 +67,17 @@ else {
     Write-Host "Skipping MSI: WiX 3 does not support ARM64 packages."
 }
 
+$portableExeName = "rshell-$version-windows-$Arch.exe"
+Copy-Item -Force `
+    "target/$target/release/rshell.exe" `
+    (Join-Path "dist" $portableExeName)
+
 $portableName = "rshell-$version-windows-$Arch.zip"
 Compress-Archive -Force `
     -Path "target/$target/release/rshell.exe" `
     -DestinationPath (Join-Path "dist" $portableName)
 
+Write-Host "Created: dist/$portableExeName"
 Write-Host "Created: dist/$installerName"
 if ($Arch -eq "x64") {
     Write-Host "Created: dist/$msiName"

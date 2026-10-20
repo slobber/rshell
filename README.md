@@ -51,8 +51,9 @@ target\release\rshell.exe
 
 ## 安装包
 
-GitHub Actions 会构建 Windows x64（EXE、MSI、ZIP）、Windows ARM64
-（EXE、ZIP）、Linux x64/ARM64（DEB、RPM）和 macOS ARM64（DMG）。
+GitHub Actions 会构建 Windows x64（绿色 EXE、安装器 EXE、MSI、ZIP）、
+Windows ARM64（绿色 EXE、安装器 EXE、ZIP）、Linux x64/ARM64（DEB、RPM）
+和 macOS ARM64（DMG）。
 推送 `v*` 标签会创建 GitHub Release；也可以在 Actions 中手动运行
 `package` 工作流。
 
