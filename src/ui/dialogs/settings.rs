@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::components::icon_button;
 use crate::ui::text_input::TextInput;
 
 pub(super) fn settings_window(
@@ -408,16 +409,41 @@ pub(super) fn settings_window(
                         }
                     });
                 ui.add_space(8.0);
-                ui.label(
-                    RichText::new(format!(
-                        "{}: {}",
-                        tr(lang, "config_warning"),
-                        app.config.database_path.display()
-                    ))
-                    .size(13.0)
-                    .monospace()
-                    .color(palette.muted),
-                );
+                let config_path = app.config.database_path.display().to_string();
+                ui.horizontal(|ui| {
+                    let label_width = (ui.available_width() - 30.0).max(80.0);
+                    ui.add_sized(
+                        [label_width, 18.0],
+                        egui::Label::new(
+                            RichText::new(format!(
+                                "{}: {}",
+                                tr(lang, "config_warning"),
+                                config_path
+                            ))
+                            .size(13.0)
+                            .monospace()
+                            .color(palette.muted),
+                        )
+                        .truncate(),
+                    )
+                    .on_hover_text(&config_path);
+                    if icon_button(
+                        ui,
+                        palette,
+                        Icon::Copy,
+                        13.0,
+                        tr(lang, "copy_config_file"),
+                        false,
+                    )
+                    .clicked()
+                    {
+                        if !crate::ui::clipboard::copy_file_to_clipboard(&app.config.database_path)
+                        {
+                            crate::ui::clipboard::copy_text(ctx, config_path);
+                        }
+                        app.toast(tr(lang, "copied"));
+                    }
+                });
             });
         },
     );
