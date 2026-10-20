@@ -1,6 +1,6 @@
 [package]
 name = "rshell"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "RShell - a cross-platform SSH and SFTP workbench"
 license = "MIT"

@@ -1,6 +1,6 @@
 name = "rshell"
 productName = "RShell"
-version = "0.1.0"
+version = "0.1.1"
 identifier = "com.slobber.rshell"
 outDir = "dist"
 icons = ["assets/app-icon.png", "assets/app-icon.ico"]
