@@ -411,11 +411,17 @@ pub(super) fn settings_window(
                 ui.add_space(8.0);
                 let config_path = app.config.database_path.display().to_string();
                 ui.horizontal(|ui| {
-                    let label_width = (ui.available_width() - 30.0).max(80.0);
+                    let text = format!("{}: {config_path}", tr(lang, "config_file"));
+                    let text_width = ui
+                        .painter()
+                        .layout_no_wrap(text.clone(), FontId::monospace(13.0), palette.muted)
+                        .size()
+                        .x;
+                    let label_width = text_width.min((ui.available_width() - 30.0).max(80.0));
                     ui.add_sized(
                         [label_width, 18.0],
                         egui::Label::new(
-                            RichText::new(format!("{}: {}", tr(lang, "config_file"), config_path))
+                            RichText::new(text)
                                 .size(13.0)
                                 .monospace()
                                 .color(palette.muted),
