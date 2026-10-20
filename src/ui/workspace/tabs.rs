@@ -199,9 +199,15 @@ pub(super) fn tab_strip(
     }
 
     if let Some((index, tab_id)) = select_tab {
+        let kind = pane.tabs.get(index).map(|tab| tab.kind);
         pane.active = index;
         *focused_pane = pane.id;
         app.active_host_id = Some(tab_id_host(pane, tab_id));
+        if kind == Some(TabKind::Terminal) {
+            app.pending_focus_tab = Some(tab_id);
+        } else {
+            app.pending_focus_tab = None;
+        }
     }
     if let Some(drag) = start_drag {
         app.drag = Some(drag);

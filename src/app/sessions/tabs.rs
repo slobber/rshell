@@ -183,6 +183,7 @@ impl ShellCoreApp {
     }
 
     pub fn activate_tab(&mut self, tab_id: u64) {
+        let kind = self.workspace.find_tab(tab_id).map(|tab| tab.kind);
         if let Some(pane_id) = self.workspace.pane_for_tab(tab_id) {
             self.workspace.focused_pane = pane_id;
             if let Some(host_id) = self.workspace.find_tab(tab_id).map(|tab| tab.host_id) {
@@ -193,6 +194,11 @@ impl ShellCoreApp {
                     pane.active = index;
                 }
             }
+        }
+        if kind == Some(TabKind::Terminal) {
+            self.pending_focus_tab = Some(tab_id);
+        } else {
+            self.pending_focus_tab = None;
         }
     }
 

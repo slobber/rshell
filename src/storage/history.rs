@@ -55,6 +55,48 @@ mod tests {
         drop(persistence);
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
+
+    #[test]
+    fn deletes_only_the_selected_session() {
+        let unique = format!(
+            "rshell-history-delete-test-{}-{}",
+            std::process::id(),
+            Utc::now().timestamp_nanos_opt().unwrap_or_default()
+        );
+        let path = std::env::temp_dir().join(unique).join("test.db");
+        let cipher = DataCipher::new([9_u8; 32]);
+        let mut persistence = Persistence::open(&path).unwrap();
+        for (session_uid, command) in [
+            ("session-a", "df -h"),
+            ("session-a", "free -h"),
+            ("session-b", "uptime"),
+        ] {
+            persistence
+                .append_command_history(
+                    &cipher,
+                    &CommandHistoryRecord {
+                        session_uid: session_uid.to_owned(),
+                        host_ip: "10.0.0.8".to_owned(),
+                        user: "root".to_owned(),
+                        cwd: "/".to_owned(),
+                        command: command.to_owned(),
+                    },
+                    100,
+                )
+                .unwrap();
+        }
+
+        persistence
+            .delete_command_history_session("session-a")
+            .unwrap();
+        let entries = persistence.load_command_history(&cipher).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].session_uid, "session-b");
+        assert_eq!(entries[0].command, "uptime");
+
+        drop(persistence);
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -154,5 +196,15 @@ impl Persistence {
             });
         }
         Ok(entries)
+    }
+
+    pub fn delete_command_history_session(&mut self, session_uid: &str) -> Result<(), String> {
+        self.conn
+            .execute(
+                "DELETE FROM command_history WHERE session_uid = ?1",
+                params![session_uid],
+            )
+            .map_err(|error| error.to_string())?;
+        Ok(())
     }
 }

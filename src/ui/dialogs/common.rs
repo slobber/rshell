@@ -32,6 +32,11 @@ pub(super) fn dialog_window<R>(
     if let Some(height) = height {
         window = window.default_height(height);
     }
+    if !resizable {
+        if let Some(height) = height {
+            window = window.fixed_size(Vec2::new(width, height));
+        }
+    }
     window.show(ctx, |ui| {
         if dialog_header(ui, palette, icon, title) {
             close_requested = true;

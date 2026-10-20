@@ -98,11 +98,18 @@ impl ShellCoreApp {
         }
     }
 
-    fn load_command_history_entries(&self) -> Vec<crate::storage::CommandHistoryEntry> {
+    pub(crate) fn load_command_history_entries(&self) -> Vec<crate::storage::CommandHistoryEntry> {
         let (Some(storage), Some(cipher)) = (&self.storage, &self.cipher) else {
             return Vec::new();
         };
         storage.load_command_history(cipher).unwrap_or_default()
+    }
+
+    pub fn delete_command_history_session(&mut self, session_uid: &str) -> Result<(), String> {
+        let Some(storage) = &mut self.storage else {
+            return Ok(());
+        };
+        storage.delete_command_history_session(session_uid)
     }
 }
 
