@@ -113,7 +113,7 @@ fn draw_expanded(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
             sidebar_tabs(app, ui, palette);
 
             let properties_height = if app.sidebar_tab == SidebarTab::Hosts {
-                190.0
+                panels::properties_height(app)
             } else {
                 0.0
             };

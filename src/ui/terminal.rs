@@ -1,27 +1,23 @@
-use eframe::egui::{
-    self, Color32, CornerRadius, FontId, Frame, Margin, Rect, RichText, Stroke, Ui, Vec2,
-};
+use eframe::egui::{self, Color32, CornerRadius, FontId, Frame, Margin, Rect, RichText, Ui, Vec2};
 
 use crate::app::ShellCoreApp;
-use crate::domain::{find_host, ConnectionBackend, SessionTab, TerminalSelection};
+use crate::domain::{find_host, SessionTab, TerminalSelection};
 use crate::icons::Icon;
 use crate::theme::{Palette, TerminalPalette};
 use crate::ui::clipboard::copy_text;
 use crate::ui::components::{context_menu_item, context_menu_separator, prepare_context_menu};
 
 pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &mut SessionTab, palette: Palette) {
-    let Some(host) = find_host(&app.hosts, tab.host_id).cloned() else {
+    if find_host(&app.hosts, tab.host_id).is_none() {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new(app.t("no_host_exists")).color(palette.red));
         });
         return;
-    };
-    let connected = app.connected_hosts.contains(&host.id);
+    }
     let zoom = app.settings.terminal_zoom;
     let terminal_palette = TerminalPalette::for_theme(app.settings.terminal_theme);
     let available = ui.available_size();
-    let status_height = 22.0;
-    let terminal_height = (available.y - status_height).max(70.0);
+    let terminal_height = available.y.max(70.0);
 
     Frame::new()
         .fill(terminal_palette.background)
@@ -241,62 +237,6 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &mut SessionTab, palette: 
                     tab.terminal_selection,
                 );
             });
-
-            let status_rect = Rect::from_min_size(
-                egui::pos2(ui.cursor().left(), ui.cursor().top()),
-                Vec2::new(ui.available_width(), status_height),
-            );
-            ui.painter()
-                .rect_filled(status_rect, CornerRadius::ZERO, palette.panel);
-            ui.painter().hline(
-                status_rect.x_range(),
-                status_rect.top(),
-                Stroke::new(1.0, palette.border),
-            );
-            let transport_line = match host.backend {
-                ConnectionBackend::Ssh => format!(
-                    "SSH-2.0 (UTF-8)  ·  xterm-256color  ·  {cols}×{rows}  ·  keep-alive {}s",
-                    host.keep_alive
-                ),
-                ConnectionBackend::LocalWsl => format!(
-                    "WSL · ConPTY  ·  {}  ·  {cols}×{rows}",
-                    host.wsl_distro.as_deref().unwrap_or("default")
-                ),
-                ConnectionBackend::Rdp => "RDP · framebuffer".to_owned(),
-            };
-            ui.painter().text(
-                egui::pos2(status_rect.left() + 7.0, status_rect.center().y),
-                egui::Align2::LEFT_CENTER,
-                transport_line,
-                FontId::monospace(crate::theme::MIN_UI_FONT_SIZE),
-                palette.muted,
-            );
-            let (status_label, status_color) = if connected {
-                (
-                    if host.backend == ConnectionBackend::LocalWsl {
-                        "WSL"
-                    } else {
-                        app.t("live_ssh")
-                    },
-                    palette.green,
-                )
-            } else {
-                match host.status {
-                    crate::domain::HostStatus::Connecting => (app.t("connecting"), palette.amber),
-                    crate::domain::HostStatus::Error => (app.t("connection_error"), palette.red),
-                    crate::domain::HostStatus::Offline | crate::domain::HostStatus::Online => {
-                        (app.t("offline"), palette.muted)
-                    }
-                }
-            };
-            ui.painter().text(
-                egui::pos2(status_rect.right() - 7.0, status_rect.center().y),
-                egui::Align2::RIGHT_CENTER,
-                status_label,
-                FontId::monospace(crate::theme::MIN_UI_FONT_SIZE),
-                status_color,
-            );
-            ui.allocate_space(Vec2::new(ui.available_width(), status_height));
         });
 }
 

@@ -1,4 +1,5 @@
 use super::*;
+use crate::domain::{find_host, ConnectionBackend, TabKind};
 
 pub fn status_bar(app: &mut ShellCoreApp, ui: &mut Ui) {
     let palette = Palette::for_mode(app.settings.theme);
@@ -11,6 +12,7 @@ pub fn status_bar(app: &mut ShellCoreApp, ui: &mut Ui) {
         .iter()
         .filter(|tunnel| tunnel.state == crate::domain::TunnelState::Online)
         .count();
+    let active_status = active_window_status(app);
     egui::Panel::bottom("system_status_bar")
         .exact_size(24.0)
         .frame(
@@ -59,6 +61,17 @@ pub fn status_bar(app: &mut ShellCoreApp, ui: &mut Ui) {
                     );
                 }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if let Some((_, label, color)) = &active_status {
+                        ui.label(RichText::new(*label).size(13.0).monospace().color(*color));
+                    }
+                    if let Some((detail, _, _)) = &active_status {
+                        ui.label(
+                            RichText::new(detail)
+                                .size(13.0)
+                                .monospace()
+                                .color(palette.muted),
+                        );
+                    }
                     ui.label(
                         RichText::new("UTF-8 · LF (Unix)")
                             .size(13.0)
@@ -74,6 +87,50 @@ pub fn status_bar(app: &mut ShellCoreApp, ui: &mut Ui) {
                 });
             });
         });
+}
+
+fn active_window_status(app: &ShellCoreApp) -> Option<(String, &'static str, Color32)> {
+    let palette = Palette::for_mode(app.settings.theme);
+    let tab = app.workspace.active_tab()?;
+    let host = find_host(&app.hosts, tab.host_id)?;
+    let connected = app.connected_hosts.contains(&host.id);
+    let detail = match tab.kind {
+        TabKind::Terminal => {
+            let (rows, cols) = tab.terminal.size();
+            match host.backend {
+                ConnectionBackend::Ssh => format!(
+                    "SSH-2.0 (UTF-8)  ·  xterm-256color  ·  {cols}×{rows}  ·  keep-alive {}s",
+                    host.keep_alive
+                ),
+                ConnectionBackend::LocalWsl => format!(
+                    "WSL · ConPTY  ·  {}  ·  {cols}×{rows}",
+                    host.wsl_distro.as_deref().unwrap_or("default")
+                ),
+                ConnectionBackend::Rdp => "RDP · framebuffer".to_owned(),
+            }
+        }
+        TabKind::Sftp => format!("SFTP · {}", host.address()),
+        TabKind::Rdp => format!("RDP · {}", host.address()),
+    };
+    let (label, color) = if connected {
+        (
+            match host.backend {
+                ConnectionBackend::LocalWsl => "WSL",
+                ConnectionBackend::Rdp => app.t("connected"),
+                ConnectionBackend::Ssh => app.t("live_ssh"),
+            },
+            palette.green,
+        )
+    } else {
+        match host.status {
+            crate::domain::HostStatus::Connecting => (app.t("connecting"), palette.amber),
+            crate::domain::HostStatus::Error => (app.t("connection_error"), palette.red),
+            crate::domain::HostStatus::Offline | crate::domain::HostStatus::Online => {
+                (app.t("offline"), palette.muted)
+            }
+        }
+    };
+    Some((detail, label, color))
 }
 
 pub fn resize_handles(app: &mut ShellCoreApp, ctx: &egui::Context) {
