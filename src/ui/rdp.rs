@@ -74,6 +74,9 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &SessionTab, palette: Pale
         ui.scope_id().with(("rdp_surface", tab.id)),
         Sense::click_and_drag(),
     );
+    if response.hovered() || response.dragged() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::None);
+    }
     let focus_requested = app.pending_focus_tab == Some(tab.id);
     if focus_requested || response.clicked() {
         response.request_focus();
