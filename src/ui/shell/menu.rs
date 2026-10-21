@@ -147,6 +147,10 @@ pub fn menus(app: &mut ShellCoreApp, ui: &mut Ui, palette: Palette) {
             }
         });
         ui.menu_button(RichText::new(app.t("help")).size(13.0), |ui| {
+            if menu_item(ui, palette, app.t("check_updates"), "") {
+                app.about_open = true;
+            }
+            ui.separator();
             if menu_item(ui, palette, app.t("settings"), "") {
                 app.settings_open = true;
             }

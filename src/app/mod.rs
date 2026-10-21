@@ -30,8 +30,8 @@ use crate::ui;
 
 pub use state::{
     AppLock, ChmodDialog, CommandHistoryDialog, ConsoleTab, DropTarget, EditorDialog, FolderDraft,
-    FontCache, HostDraft, HostTreeDrag, LogSelection, Md5Dialog, SecurityAction, SidebarTab,
-    TabDrag, TreeItem, TreeRename,
+    FontCache, HashAlgorithm, HashDialog, HostDraft, HostTreeDrag, LogSelection, SecurityAction,
+    SftpFileDialog, SftpFileOperation, SidebarTab, TabDrag, TreeItem, TreeRename,
 };
 
 pub struct ShellCoreApp {
@@ -90,7 +90,8 @@ pub struct ShellCoreApp {
     pub command_palette_query: String,
     pub editor_dialog: Option<EditorDialog>,
     pub chmod_dialog: Option<ChmodDialog>,
-    pub md5_dialog: Option<Md5Dialog>,
+    pub hash_dialog: Option<HashDialog>,
+    pub sftp_file_dialog: Option<SftpFileDialog>,
     pub unlock_password: String,
     pub unlock_remember: RememberDuration,
     pub unlock_error: Option<String>,

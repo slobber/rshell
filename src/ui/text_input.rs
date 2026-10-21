@@ -15,6 +15,7 @@ pub struct TextInput<'a> {
     desired_size: Option<Vec2>,
     font: Option<FontSelection>,
     text_color: Option<Color32>,
+    vertical_align: Option<egui::Align>,
     frame: Option<egui::Frame>,
     code_editor: bool,
 }
@@ -54,6 +55,7 @@ impl<'a> TextInput<'a> {
             desired_size: None,
             font: None,
             text_color: None,
+            vertical_align: None,
             frame: None,
             code_editor: false,
         }
@@ -101,6 +103,11 @@ impl<'a> TextInput<'a> {
         self
     }
 
+    pub fn vertical_align(mut self, align: egui::Align) -> Self {
+        self.vertical_align = Some(align);
+        self
+    }
+
     pub fn frame(mut self, frame: egui::Frame) -> Self {
         self.frame = Some(frame);
         self
@@ -140,6 +147,9 @@ impl<'a> TextInput<'a> {
         }
         if let Some(color) = self.text_color {
             edit = edit.text_color(color);
+        }
+        if let Some(align) = self.vertical_align {
+            edit = edit.align(egui::Align2::LEFT_TOP.with_y(align));
         }
         if let Some(frame) = self.frame {
             edit = edit.frame(frame);

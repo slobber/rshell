@@ -24,6 +24,14 @@ pub enum SshAuthMaterial {
     Agent,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct FileHashes {
+    pub md5: String,
+    pub sha1: String,
+    pub sha256: String,
+    pub sha512: String,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SshMode {
     Terminal { cols: u32, rows: u32 },
@@ -94,7 +102,12 @@ pub enum SshEvent {
     HashResult {
         tab_id: u64,
         path: String,
-        hash: String,
+        hashes: FileHashes,
+    },
+    SftpChanged {
+        tab_id: u64,
+        directory: String,
+        message: String,
     },
     TransferProgress {
         transfer_id: u64,
@@ -145,7 +158,16 @@ enum SshCommand {
         path: String,
         mode: String,
     },
-    Md5Remote(String),
+    CreateDirectory(String),
+    RenameEntry {
+        old_path: String,
+        new_path: String,
+    },
+    RemoveEntry {
+        path: String,
+        is_dir: bool,
+    },
+    HashRemote(String),
     Disconnect,
 }
 
@@ -423,8 +445,20 @@ impl SshManager {
         self.send(tab_id, SshCommand::SetPermissions { path, mode })
     }
 
-    pub fn md5_remote(&self, tab_id: u64, path: String) -> bool {
-        self.send(tab_id, SshCommand::Md5Remote(path))
+    pub fn create_remote_directory(&self, tab_id: u64, path: String) -> bool {
+        self.send(tab_id, SshCommand::CreateDirectory(path))
+    }
+
+    pub fn rename_remote_entry(&self, tab_id: u64, old_path: String, new_path: String) -> bool {
+        self.send(tab_id, SshCommand::RenameEntry { old_path, new_path })
+    }
+
+    pub fn remove_remote_entry(&self, tab_id: u64, path: String, is_dir: bool) -> bool {
+        self.send(tab_id, SshCommand::RemoveEntry { path, is_dir })
+    }
+
+    pub fn hash_remote(&self, tab_id: u64, path: String) -> bool {
+        self.send(tab_id, SshCommand::HashRemote(path))
     }
 
     pub fn close_tab(&mut self, tab_id: u64) {
@@ -909,11 +943,70 @@ async fn run_worker(request: WorkerRequest) {
                     }
                 }
             }
-            SshCommand::Md5Remote(path) => match worker.md5_remote(&path).await {
-                Ok(hash) => {
-                    let _ = worker
-                        .events
-                        .send(SshEvent::HashResult { tab_id, path, hash });
+            SshCommand::CreateDirectory(path) => {
+                match worker.create_directory(path.clone()).await {
+                    Ok(()) => {
+                        let _ = worker.events.send(SshEvent::SftpChanged {
+                            tab_id,
+                            directory: parent_remote_path(&path),
+                            message: format!("Created remote folder {path}"),
+                        });
+                    }
+                    Err(error) => {
+                        let _ = worker.events.send(SshEvent::Notice {
+                            tab_id,
+                            level: LogLevel::Error,
+                            message: error,
+                        });
+                    }
+                }
+            }
+            SshCommand::RenameEntry { old_path, new_path } => {
+                match worker
+                    .rename_entry(old_path.clone(), new_path.clone())
+                    .await
+                {
+                    Ok(()) => {
+                        let _ = worker.events.send(SshEvent::SftpChanged {
+                            tab_id,
+                            directory: parent_remote_path(&old_path),
+                            message: format!("Renamed {old_path} to {new_path}"),
+                        });
+                    }
+                    Err(error) => {
+                        let _ = worker.events.send(SshEvent::Notice {
+                            tab_id,
+                            level: LogLevel::Error,
+                            message: error,
+                        });
+                    }
+                }
+            }
+            SshCommand::RemoveEntry { path, is_dir } => {
+                match worker.remove_entry(path.clone(), is_dir).await {
+                    Ok(()) => {
+                        let _ = worker.events.send(SshEvent::SftpChanged {
+                            tab_id,
+                            directory: parent_remote_path(&path),
+                            message: format!("Deleted remote entry {path}"),
+                        });
+                    }
+                    Err(error) => {
+                        let _ = worker.events.send(SshEvent::Notice {
+                            tab_id,
+                            level: LogLevel::Error,
+                            message: error,
+                        });
+                    }
+                }
+            }
+            SshCommand::HashRemote(path) => match worker.hash_remote(&path).await {
+                Ok(hashes) => {
+                    let _ = worker.events.send(SshEvent::HashResult {
+                        tab_id,
+                        path,
+                        hashes,
+                    });
                 }
                 Err(error) => {
                     let _ = worker.events.send(SshEvent::Notice {
@@ -1169,7 +1262,35 @@ impl Worker {
             .map_err(|error| format!("chmod failed for {path}: {error}"))
     }
 
-    async fn md5_remote(&self, path: &str) -> Result<String, String> {
+    async fn create_directory(&self, path: String) -> Result<(), String> {
+        let sftp = self
+            .sftp
+            .as_ref()
+            .ok_or_else(|| "SFTP channel is not available".to_owned())?;
+        sftp.create_dir(path.clone())
+            .await
+            .map_err(|error| format!("Could not create folder {path}: {error}"))
+    }
+
+    async fn rename_entry(&self, old_path: String, new_path: String) -> Result<(), String> {
+        let sftp = self
+            .sftp
+            .as_ref()
+            .ok_or_else(|| "SFTP channel is not available".to_owned())?;
+        sftp.rename(old_path.clone(), new_path.clone())
+            .await
+            .map_err(|error| format!("Could not rename {old_path} to {new_path}: {error}"))
+    }
+
+    async fn remove_entry(&self, path: String, is_dir: bool) -> Result<(), String> {
+        let sftp = self
+            .sftp
+            .as_ref()
+            .ok_or_else(|| "SFTP channel is not available".to_owned())?;
+        remove_remote_tree(sftp, path, is_dir).await
+    }
+
+    async fn hash_remote(&self, path: &str) -> Result<FileHashes, String> {
         let sftp = self
             .sftp
             .as_ref()
@@ -1179,7 +1300,12 @@ impl Worker {
             .await
             .map_err(|error| format!("Could not read {path}: {error}"))?;
         use md5::{Digest, Md5};
-        let mut hasher = Md5::new();
+        use sha1::Sha1;
+        use sha2::{Sha256, Sha512};
+        let mut md5 = Md5::new();
+        let mut sha1 = Sha1::new();
+        let mut sha256 = Sha256::new();
+        let mut sha512 = Sha512::new();
         let mut buffer = vec![0_u8; 64 * 1024];
         loop {
             let read = file
@@ -1189,16 +1315,57 @@ impl Worker {
             if read == 0 {
                 break;
             }
-            hasher.update(&buffer[..read]);
+            let bytes = &buffer[..read];
+            md5.update(bytes);
+            sha1.update(bytes);
+            sha256.update(bytes);
+            sha512.update(bytes);
         }
         file.close()
             .await
             .map_err(|error| format!("Could not close {path}: {error}"))?;
-        Ok(hasher
-            .finalize()
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect())
+        Ok(FileHashes {
+            md5: hex_digest(md5.finalize().as_slice()),
+            sha1: hex_digest(sha1.finalize().as_slice()),
+            sha256: hex_digest(sha256.finalize().as_slice()),
+            sha512: hex_digest(sha512.finalize().as_slice()),
+        })
+    }
+}
+
+async fn remove_remote_tree(sftp: &SftpSession, path: String, is_dir: bool) -> Result<(), String> {
+    if !is_dir {
+        return sftp
+            .remove_file(path.clone())
+            .await
+            .map_err(|error| format!("Could not delete {path}: {error}"));
+    }
+
+    let entries = sftp
+        .read_dir(path.clone())
+        .await
+        .map_err(|error| format!("Could not read folder {path}: {error}"))?
+        .collect::<Vec<_>>();
+    for entry in entries {
+        let metadata = entry.metadata();
+        let child_is_dir = metadata.is_dir() && !metadata.is_symlink();
+        Box::pin(remove_remote_tree(sftp, entry.path(), child_is_dir)).await?;
+    }
+    sftp.remove_dir(path.clone())
+        .await
+        .map_err(|error| format!("Could not delete folder {path}: {error}"))
+}
+
+fn parent_remote_path(path: &str) -> String {
+    let trimmed = path.trim_end_matches('/');
+    if let Some((parent, _)) = trimmed.rsplit_once('/') {
+        if parent.is_empty() {
+            "/".to_owned()
+        } else {
+            format!("{parent}/")
+        }
+    } else {
+        "/".to_owned()
     }
 }
 
@@ -1505,13 +1672,18 @@ pub fn md5_bytes(bytes: &[u8]) -> String {
     digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-pub fn md5_local(path: &str) -> Result<String, String> {
+pub fn hash_local(path: &str) -> Result<FileHashes, String> {
     let resolved = local_fs::resolve(path);
     let mut file = std::fs::File::open(&resolved)
         .map_err(|error| format!("Could not read {}: {error}", resolved.display()))?;
     use md5::{Digest, Md5};
+    use sha1::Sha1;
+    use sha2::{Sha256, Sha512};
     use std::io::Read;
-    let mut hasher = Md5::new();
+    let mut md5 = Md5::new();
+    let mut sha1 = Sha1::new();
+    let mut sha256 = Sha256::new();
+    let mut sha512 = Sha512::new();
     let mut buffer = vec![0_u8; 64 * 1024];
     loop {
         let read = file
@@ -1520,13 +1692,22 @@ pub fn md5_local(path: &str) -> Result<String, String> {
         if read == 0 {
             break;
         }
-        hasher.update(&buffer[..read]);
+        let bytes = &buffer[..read];
+        md5.update(bytes);
+        sha1.update(bytes);
+        sha256.update(bytes);
+        sha512.update(bytes);
     }
-    Ok(hasher
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect())
+    Ok(FileHashes {
+        md5: hex_digest(md5.finalize().as_slice()),
+        sha1: hex_digest(sha1.finalize().as_slice()),
+        sha256: hex_digest(sha256.finalize().as_slice()),
+        sha512: hex_digest(sha512.finalize().as_slice()),
+    })
+}
+
+fn hex_digest(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 impl Drop for SshManager {
@@ -1835,6 +2016,38 @@ mod tests {
     #[test]
     fn md5_matches_known_vector() {
         assert_eq!(md5_bytes(b"hello"), "5d41402abc4b2a76b9719d911017c592");
+    }
+
+    #[test]
+    fn local_hash_check_calculates_md5_and_sha_digests() {
+        let path = std::env::temp_dir().join(format!(
+            "rshell-hash-{}-{}.txt",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(&path, b"hello").unwrap();
+        let hashes = hash_local(&path.display().to_string()).unwrap();
+        let _ = std::fs::remove_file(path);
+        assert_eq!(hashes.md5, "5d41402abc4b2a76b9719d911017c592");
+        assert_eq!(hashes.sha1, "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d");
+        assert_eq!(
+            hashes.sha256,
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
+        assert_eq!(
+            hashes.sha512,
+            "9b71d224bd62f3785d96d46ad3ea3d73319bfbc2890caadae2dff72519673ca72323c3d99ba5c11d7c7acc6e14b8c5da0c4663475c2e5c3adef46f73bcdec043"
+        );
+    }
+
+    #[test]
+    fn remote_parent_paths_keep_a_single_trailing_separator() {
+        assert_eq!(parent_remote_path("/var/www/site.conf"), "/var/www/");
+        assert_eq!(parent_remote_path("/var/www/folder/"), "/var/www/");
+        assert_eq!(parent_remote_path("/top-level"), "/");
     }
 
     fn test_host(address: SocketAddr) -> Host {

@@ -2,7 +2,7 @@
 
 RShell 是一个基于 Rust + egui 的跨平台 SSH / SFTP / WSL / RDP 工作台。界面采用高密度运维工作台布局，终端、远程桌面与双栏 Xftp 文件管理都作为同级 Tab 内容存在。
 
-当前版本已经接入真实 SSH/SFTP、Windows WSL 本地终端和 RDP 远程桌面：终端使用 VT100 屏幕缓冲呈现输出，SFTP 使用真实的远端目录、上传、下载、编辑、chmod 与 MD5 校验流程，RDP 使用 IronRDP 帧缓冲渲染。
+当前版本已经接入真实 SSH/SFTP、Windows WSL 本地终端和 RDP 远程桌面：终端使用 VT100 屏幕缓冲呈现输出，SFTP 使用真实的远端目录、上传、下载、编辑、chmod 与 MD5/SHA 校验流程，RDP 使用 IronRDP 帧缓冲渲染。
 
 ## 已实现
 
@@ -22,7 +22,7 @@ RShell 是一个基于 Rust + egui 的跨平台 SSH / SFTP / WSL / RDP 工作台
 - SSH 主机密钥 TOFU 校验，指纹持久化到 SQLite
 - VT100 终端解析、ANSI 颜色、滚动回看、PTY resize 与直接键盘输入
 - 终端配色主题（RShell Dark、Solarized Dark、Dracula、Paper）
-- 真实 SFTP 双栏浏览、上传/下载进度、远端编辑、chmod 与 MD5
+- 真实 SFTP 双栏浏览、上传/下载进度、远端编辑、chmod 与 MD5/SHA 校验
 - SFTP 本地/远端正栏路径可直接编辑并按回车跳转
 - 递归分栏树、可拖拽分隔条、Tab 拖拽到窗格四边拆分
 - 直接编辑、chmod、MD5 面板

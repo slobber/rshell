@@ -1,6 +1,6 @@
 [package]
 name = "rshell"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "RShell - a cross-platform SSH and SFTP workbench"
 license = "MIT"
@@ -96,6 +96,12 @@ keyring = { version = "3", default-features = false, features = [
 winres = "0.1"
 
 [dependencies.md-5]
+version = "0.11"
+
+[dependencies.sha1]
+version = "0.11"
+
+[dependencies.sha2]
 version = "0.11"
 
 [dev-dependencies]

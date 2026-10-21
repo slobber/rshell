@@ -31,6 +31,54 @@ pub(super) fn about_window(
                         .monospace()
                         .color(palette.muted),
                 );
+                ui.add_space(9.0);
+                Frame::new()
+                    .fill(palette.panel)
+                    .stroke(Stroke::new(1.0, palette.border))
+                    .corner_radius(CornerRadius::same(6))
+                    .inner_margin(Margin::same(10))
+                    .show(ui, |ui| {
+                        ui.set_min_width(350.0);
+                        ui.horizontal(|ui| {
+                            crate::icons::image(ui, Icon::Refresh, 16.0, palette.accent);
+                            ui.label(
+                                RichText::new(tr(lang, "update_check_title"))
+                                    .size(13.0)
+                                    .strong()
+                                    .color(palette.text),
+                            );
+                        });
+                        ui.add_space(4.0);
+                        ui.label(
+                            RichText::new(tr(lang, "update_check_body"))
+                                .size(13.0)
+                                .color(palette.text_soft),
+                        );
+                        ui.add_space(6.0);
+                        ui.horizontal(|ui| {
+                            ui.label(
+                                RichText::new(format!(
+                                    "{}: v{}",
+                                    tr(lang, "current_version"),
+                                    env!("CARGO_PKG_VERSION")
+                                ))
+                                .size(13.0)
+                                .monospace()
+                                .color(palette.muted),
+                            );
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    ui.hyperlink_to(
+                                        RichText::new(tr(lang, "view_releases"))
+                                            .size(13.0)
+                                            .color(palette.accent),
+                                        "https://github.com/slobber/rshell/releases",
+                                    );
+                                },
+                            );
+                        });
+                    });
                 ui.add_space(7.0);
                 ui.label(
                     RichText::new(tr(lang, "about_body"))

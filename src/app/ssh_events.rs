@@ -249,6 +249,38 @@ impl ShellCoreApp {
                     }
                     self.log(LogLevel::Error, message);
                 }
+                SshEvent::SftpChanged {
+                    tab_id,
+                    directory,
+                    message,
+                } => {
+                    let mut refresh = None;
+                    if let Some((tab, left)) = self.workspace.find_tab_for_sftp_session_mut(tab_id)
+                    {
+                        if left {
+                            if let Some(session_id) = tab.left_session_id {
+                                tab.left_loading = true;
+                                tab.local_error = None;
+                                tab.left_request_path = directory.clone();
+                                tab.local_selected.clear();
+                                tab.local_anchor = None;
+                                refresh = Some((session_id, directory));
+                            }
+                        } else {
+                            tab.remote_loading = true;
+                            tab.remote_error = None;
+                            tab.remote_request_path = directory.clone();
+                            tab.remote_selected.clear();
+                            tab.remote_anchor = None;
+                            refresh = Some((tab.id, directory));
+                        }
+                    }
+                    self.log(LogLevel::Success, message.clone());
+                    self.toast(message);
+                    if let Some((session_id, path)) = refresh {
+                        self.ssh.list_remote(session_id, path);
+                    }
+                }
                 SshEvent::FileContent {
                     tab_id,
                     path,
@@ -281,8 +313,12 @@ impl ShellCoreApp {
                         self.ssh.list_remote(tab_id, path);
                     }
                 }
-                SshEvent::HashResult { path, hash, .. } => {
-                    self.md5_dialog = Some(crate::app::Md5Dialog { path, hash });
+                SshEvent::HashResult { path, hashes, .. } => {
+                    if let Some(dialog) = &mut self.hash_dialog {
+                        if dialog.path == path {
+                            dialog.hashes = Some(hashes);
+                        }
+                    }
                 }
                 SshEvent::TransferProgress {
                     transfer_id,

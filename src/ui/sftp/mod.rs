@@ -2,7 +2,7 @@ use eframe::egui::{
     self, Align, CornerRadius, FontId, Layout, Rect, RichText, ScrollArea, Sense, Stroke, Ui, Vec2,
 };
 
-use crate::app::ShellCoreApp;
+use crate::app::{SftpFileDialog, SftpFileOperation, ShellCoreApp};
 use crate::domain::{find_host, FileEntry, SessionTab, TransferDirection};
 use crate::icons::Icon;
 use crate::theme::Palette;
@@ -252,6 +252,82 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &mut SessionTab, palette: 
                     }
                 }
             }
+            if let Some((direction, names)) = local_action.transfer {
+                app.queue_transfers_for_tab(tab, direction, &names);
+            }
+            if local_action.new_folder {
+                app.sftp_file_dialog = Some(sftp_file_dialog(
+                    tab,
+                    left_remote,
+                    tab.left_session_id,
+                    SftpFileOperation::NewFolder,
+                    &tab.local_cwd,
+                    "",
+                    "",
+                    false,
+                ));
+            }
+            if let Some(name) = local_action.rename {
+                app.sftp_file_dialog = Some(sftp_file_dialog(
+                    tab,
+                    left_remote,
+                    tab.left_session_id,
+                    SftpFileOperation::Rename,
+                    &tab.local_cwd,
+                    &name,
+                    &name,
+                    false,
+                ));
+            }
+            if let Some((name, is_dir)) = local_action.delete {
+                app.sftp_file_dialog = Some(sftp_file_dialog(
+                    tab,
+                    left_remote,
+                    tab.left_session_id,
+                    SftpFileOperation::Delete,
+                    &tab.local_cwd,
+                    &name,
+                    "",
+                    is_dir,
+                ));
+            }
+            if let Some(name) = local_action.chmod {
+                if let Some(session_id) = tab.left_session_id.filter(|_| left_remote) {
+                    app.chmod_dialog = Some(crate::app::ChmodDialog {
+                        path: browser::join_path(&tab.local_cwd, &name),
+                        mode: "644".to_owned(),
+                        tab_id: Some(session_id),
+                    });
+                }
+            }
+            if let Some(name) = local_action.hash {
+                let path = if left_remote {
+                    browser::join_path(&tab.local_cwd, &name)
+                } else {
+                    crate::local_fs::join(&tab.local_cwd, &name)
+                };
+                if left_remote {
+                    if let Some(session_id) = tab.left_session_id {
+                        app.hash_dialog = Some(crate::app::HashDialog {
+                            path: path.clone(),
+                            hashes: None,
+                            copied: None,
+                        });
+                        app.ssh.hash_remote(session_id, path);
+                    }
+                } else {
+                    match crate::ssh::hash_local(&path) {
+                        Ok(hashes) => {
+                            app.hash_dialog = Some(crate::app::HashDialog {
+                                path,
+                                hashes: Some(hashes),
+                                copied: None,
+                            });
+                        }
+                        Err(error) => app.log(crate::domain::LogLevel::Error, error),
+                    }
+                }
+            }
             if let Some(host_id) = remote_action.source_change.flatten() {
                 app.set_sftp_right_host(tab, host_id);
             }
@@ -289,6 +365,61 @@ pub fn draw(app: &mut ShellCoreApp, ui: &mut Ui, tab: &mut SessionTab, palette: 
                 });
                 app.ssh
                     .read_remote_file(tab.id, browser::join_path(&tab.remote_cwd, &name));
+            }
+            if let Some((direction, names)) = remote_action.transfer {
+                app.queue_transfers_for_tab(tab, direction, &names);
+            }
+            if remote_action.new_folder {
+                app.sftp_file_dialog = Some(sftp_file_dialog(
+                    tab,
+                    true,
+                    Some(tab.id),
+                    SftpFileOperation::NewFolder,
+                    &tab.remote_cwd,
+                    "",
+                    "",
+                    false,
+                ));
+            }
+            if let Some(name) = remote_action.rename {
+                app.sftp_file_dialog = Some(sftp_file_dialog(
+                    tab,
+                    true,
+                    Some(tab.id),
+                    SftpFileOperation::Rename,
+                    &tab.remote_cwd,
+                    &name,
+                    &name,
+                    false,
+                ));
+            }
+            if let Some((name, is_dir)) = remote_action.delete {
+                app.sftp_file_dialog = Some(sftp_file_dialog(
+                    tab,
+                    true,
+                    Some(tab.id),
+                    SftpFileOperation::Delete,
+                    &tab.remote_cwd,
+                    &name,
+                    "",
+                    is_dir,
+                ));
+            }
+            if let Some(name) = remote_action.chmod {
+                app.chmod_dialog = Some(crate::app::ChmodDialog {
+                    path: browser::join_path(&tab.remote_cwd, &name),
+                    mode: "644".to_owned(),
+                    tab_id: Some(tab.id),
+                });
+            }
+            if let Some(name) = remote_action.hash {
+                let path = browser::join_path(&tab.remote_cwd, &name);
+                app.hash_dialog = Some(crate::app::HashDialog {
+                    path: path.clone(),
+                    hashes: None,
+                    copied: None,
+                });
+                app.ssh.hash_remote(tab.id, path);
             }
             if let Some(payload) = local_action.drop_files {
                 if payload.source == SftpPaneSide::Right {
@@ -332,5 +463,28 @@ fn request_left_directory(app: &mut ShellCoreApp, tab: &mut SessionTab) {
     if !app.ssh.list_remote(session_id, tab.local_cwd.clone()) {
         tab.left_loading = false;
         tab.local_error = Some("SFTP channel is not available".to_owned());
+    }
+}
+
+fn sftp_file_dialog(
+    tab: &SessionTab,
+    remote: bool,
+    session_id: Option<u64>,
+    operation: SftpFileOperation,
+    directory: &str,
+    item_name: &str,
+    name_input: &str,
+    is_dir: bool,
+) -> SftpFileDialog {
+    SftpFileDialog {
+        tab_id: tab.id,
+        session_id,
+        remote,
+        operation,
+        directory: directory.to_owned(),
+        item_name: item_name.to_owned(),
+        name_input: name_input.to_owned(),
+        is_dir,
+        error: None,
     }
 }

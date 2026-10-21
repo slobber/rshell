@@ -69,7 +69,10 @@ pub fn draw_modals(app: &mut ShellCoreApp, ctx: &egui::Context) {
     if app.chmod_dialog.is_some() {
         file_tools::chmod_window(app, ctx, palette, lang);
     }
-    if app.md5_dialog.is_some() {
-        file_tools::md5_window(app, ctx, palette, lang);
+    if app.hash_dialog.is_some() {
+        file_tools::hash_window(app, ctx, palette, lang);
+    }
+    if app.sftp_file_dialog.is_some() {
+        file_tools::sftp_file_operation_window(app, ctx, palette, lang);
     }
 }

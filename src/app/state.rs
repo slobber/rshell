@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use crate::domain::{AuthKind, ConnectionBackend, DropZone, HostOs, KeySource};
+use crate::ssh::FileHashes;
 use crate::storage::CommandHistoryEntry;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -123,10 +125,39 @@ pub struct ChmodDialog {
     pub tab_id: Option<u64>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HashAlgorithm {
+    Md5,
+    Sha1,
+    Sha256,
+    Sha512,
+}
+
 #[derive(Clone, Debug)]
-pub struct Md5Dialog {
+pub struct HashDialog {
     pub path: String,
-    pub hash: String,
+    pub hashes: Option<FileHashes>,
+    pub copied: Option<(HashAlgorithm, Instant)>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SftpFileOperation {
+    NewFolder,
+    Rename,
+    Delete,
+}
+
+#[derive(Clone, Debug)]
+pub struct SftpFileDialog {
+    pub tab_id: u64,
+    pub session_id: Option<u64>,
+    pub remote: bool,
+    pub operation: SftpFileOperation,
+    pub directory: String,
+    pub item_name: String,
+    pub name_input: String,
+    pub is_dir: bool,
+    pub error: Option<String>,
 }
 
 #[derive(Clone, Debug)]

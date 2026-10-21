@@ -1,6 +1,8 @@
 use super::*;
-use crate::domain::{Host, SftpColumnWidths};
-use crate::ui::components::host_icon;
+use crate::domain::{Host, SftpColumnWidths, TransferDirection};
+use crate::ui::components::{
+    context_menu_item, context_menu_separator, host_icon, prepare_context_menu,
+};
 use crate::ui::text_input::TextInput;
 
 #[derive(Default)]
@@ -12,6 +14,12 @@ pub(super) struct BrowserAction {
     pub(super) navigate: Option<String>,
     pub(super) source_change: Option<Option<u64>>,
     pub(super) drop_files: Option<SftpDragPayload>,
+    pub(super) transfer: Option<(TransferDirection, Vec<String>)>,
+    pub(super) new_folder: bool,
+    pub(super) rename: Option<String>,
+    pub(super) delete: Option<(String, bool)>,
+    pub(super) chmod: Option<String>,
+    pub(super) hash: Option<String>,
 }
 
 pub(super) fn browser_pane(
@@ -157,6 +165,7 @@ pub(super) fn browser_pane(
         .frame(egui::Frame::NONE)
         .font(FontId::monospace(13.0))
         .text_color(palette.text_soft)
+        .vertical_align(egui::Align::Center)
         .put(ui, path_rect, palette, app.settings.language);
     let navigate_requested =
         path_response.has_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
@@ -222,7 +231,7 @@ pub(super) fn browser_pane(
         },
     );
 
-    table_header(
+    let table_header_response = table_header(
         ui,
         width,
         side,
@@ -236,6 +245,9 @@ pub(super) fn browser_pane(
         source_change,
         ..Default::default()
     };
+    table_header_response.context_menu(|ui| {
+        background_context_menu(ui, palette, app.settings.language, &mut action);
+    });
     if navigate_requested && !path_input.trim().is_empty() {
         action.navigate = Some(path_input.trim().to_owned());
     }
@@ -246,7 +258,9 @@ pub(super) fn browser_pane(
         Layout::top_down(Align::Min),
         |ui| {
             let (_, dropped) = ui.dnd_drop_zone::<SftpDragPayload, _>(
-                egui::Frame::new().inner_margin(egui::Margin::ZERO),
+                egui::Frame::new()
+                    .fill(palette.panel_alt)
+                    .inner_margin(egui::Margin::ZERO),
                 |ui| {
                     ScrollArea::vertical()
                         .id_salt(("file_list", side, path))
@@ -286,7 +300,7 @@ pub(super) fn browser_pane(
                                         modifiers.ctrl || modifiers.command,
                                     );
                                 }
-                                if response.drag_started() && !selected_row {
+                                if response.secondary_clicked() && !selected_row {
                                     selected.clear();
                                     selected.push(entry.name.clone());
                                     *selection_anchor = Some(index);
@@ -297,6 +311,18 @@ pub(super) fn browser_pane(
                                 } else {
                                     vec![entry.name.clone()]
                                 };
+                                response.context_menu(|ui| {
+                                    entry_context_menu(
+                                        ui,
+                                        entry,
+                                        remote,
+                                        path,
+                                        &drag_names,
+                                        palette,
+                                        app.settings.language,
+                                        &mut action,
+                                    );
+                                });
                                 response.dnd_set_drag_payload(SftpDragPayload {
                                     source: side,
                                     names: drag_names,
@@ -308,6 +334,25 @@ pub(super) fn browser_pane(
                                         action.open_file = Some(entry.name.clone());
                                     }
                                 }
+                            }
+                            let remaining_height = ui.available_height().max(0.0);
+                            if remaining_height > 0.0 {
+                                let (_, background) = ui.allocate_exact_size(
+                                    Vec2::new(width, remaining_height),
+                                    Sense::click(),
+                                );
+                                if background.clicked() {
+                                    selected.clear();
+                                    *selection_anchor = None;
+                                }
+                                background.context_menu(|ui| {
+                                    background_context_menu(
+                                        ui,
+                                        palette,
+                                        app.settings.language,
+                                        &mut action,
+                                    );
+                                });
                             }
                         });
                 },
@@ -332,8 +377,8 @@ fn table_header(
     palette: Palette,
     language: crate::i18n::Language,
     columns_state: &mut SftpColumnWidths,
-) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, 30.0), Sense::hover());
+) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 30.0), Sense::click());
     ui.painter()
         .rect_filled(rect, CornerRadius::ZERO, palette.canvas);
     ui.painter().hline(
@@ -344,49 +389,69 @@ fn table_header(
     let columns = columns(width, remote, *columns_state);
     let header_font = FontId::monospace(13.0);
     let mut x = rect.left() + 7.0;
-    ui.painter().text(
-        egui::pos2(x, rect.center().y),
-        egui::Align2::LEFT_CENTER,
+    paint_ellipsized(
+        ui,
+        Rect::from_min_max(
+            egui::pos2(x, rect.top()),
+            egui::pos2(x + columns.name - 5.0, rect.bottom()),
+        ),
         crate::i18n::tr(language, "name"),
         header_font.clone(),
         palette.muted,
+        false,
     );
     x += columns.name;
     if remote {
-        ui.painter().text(
-            egui::pos2(x, rect.center().y),
-            egui::Align2::LEFT_CENTER,
+        paint_ellipsized(
+            ui,
+            Rect::from_min_max(
+                egui::pos2(x, rect.top()),
+                egui::pos2(x + columns.perm - 5.0, rect.bottom()),
+            ),
             crate::i18n::tr(language, "perm"),
             header_font.clone(),
             palette.muted,
+            false,
         );
         x += columns.perm;
         if columns.owner > 0.0 {
-            ui.painter().text(
-                egui::pos2(x, rect.center().y),
-                egui::Align2::LEFT_CENTER,
+            paint_ellipsized(
+                ui,
+                Rect::from_min_max(
+                    egui::pos2(x, rect.top()),
+                    egui::pos2(x + columns.owner - 5.0, rect.bottom()),
+                ),
                 crate::i18n::tr(language, "owner"),
                 header_font.clone(),
                 palette.muted,
+                false,
             );
             x += columns.owner;
         }
     }
-    ui.painter().text(
-        egui::pos2(x + columns.size - 4.0, rect.center().y),
-        egui::Align2::RIGHT_CENTER,
+    paint_ellipsized(
+        ui,
+        Rect::from_min_max(
+            egui::pos2(x, rect.top()),
+            egui::pos2(x + columns.size - 4.0, rect.bottom()),
+        ),
         crate::i18n::tr(language, "size"),
         header_font.clone(),
         palette.muted,
+        true,
     );
     x += columns.size;
     if columns.date > 0.0 {
-        ui.painter().text(
-            egui::pos2(x + 4.0, rect.center().y),
-            egui::Align2::LEFT_CENTER,
+        paint_ellipsized(
+            ui,
+            Rect::from_min_max(
+                egui::pos2(x + 4.0, rect.top()),
+                egui::pos2(x + columns.date - 4.0, rect.bottom()),
+            ),
             crate::i18n::tr(language, "modified"),
             header_font,
             palette.muted,
+            false,
         );
     }
 
@@ -432,6 +497,176 @@ fn table_header(
         resize(size_end, 0, &mut |delta| {
             columns_state.size = (columns_state.size + delta).clamp(50.0, 140.0);
         });
+    }
+    response
+}
+
+fn background_context_menu(
+    ui: &mut Ui,
+    palette: Palette,
+    language: crate::i18n::Language,
+    action: &mut BrowserAction,
+) {
+    prepare_context_menu(ui, palette);
+    if context_menu_item(
+        ui,
+        palette,
+        Icon::FolderPlus,
+        crate::i18n::tr(language, "new_folder"),
+        "",
+        true,
+        false,
+    ) {
+        action.new_folder = true;
+        ui.close();
+    }
+    context_menu_separator(ui, palette);
+    if context_menu_item(
+        ui,
+        palette,
+        Icon::Refresh,
+        crate::i18n::tr(language, "refresh"),
+        "",
+        true,
+        false,
+    ) {
+        action.refresh = true;
+        ui.close();
+    }
+}
+
+fn entry_context_menu(
+    ui: &mut Ui,
+    entry: &FileEntry,
+    remote: bool,
+    directory: &str,
+    selected_names: &[String],
+    palette: Palette,
+    language: crate::i18n::Language,
+    action: &mut BrowserAction,
+) {
+    prepare_context_menu(ui, palette);
+    if context_menu_item(
+        ui,
+        palette,
+        if entry.is_dir {
+            Icon::FolderOpen
+        } else {
+            Icon::Eye
+        },
+        crate::i18n::tr(language, "open"),
+        "",
+        true,
+        false,
+    ) {
+        if entry.is_dir {
+            action.open_dir = Some(entry.name.clone());
+        } else {
+            action.open_file = Some(entry.name.clone());
+        }
+        ui.close();
+    }
+    context_menu_separator(ui, palette);
+    let (transfer_icon, transfer_label, direction) = if remote {
+        (
+            Icon::CloudDownload,
+            crate::i18n::tr(language, "download"),
+            TransferDirection::Download,
+        )
+    } else {
+        (
+            Icon::CloudUpload,
+            crate::i18n::tr(language, "upload"),
+            TransferDirection::Upload,
+        )
+    };
+    if context_menu_item(
+        ui,
+        palette,
+        transfer_icon,
+        transfer_label,
+        "",
+        !entry.is_dir,
+        false,
+    ) {
+        action.transfer = Some((direction, selected_names.to_vec()));
+        ui.close();
+    }
+    if context_menu_item(
+        ui,
+        palette,
+        Icon::Pencil,
+        crate::i18n::tr(language, "rename"),
+        "",
+        true,
+        false,
+    ) {
+        action.rename = Some(entry.name.clone());
+        ui.close();
+    }
+    if context_menu_item(
+        ui,
+        palette,
+        Icon::Trash,
+        crate::i18n::tr(language, "delete"),
+        "",
+        true,
+        true,
+    ) {
+        action.delete = Some((entry.name.clone(), entry.is_dir && !entry.symlink));
+        ui.close();
+    }
+    context_menu_separator(ui, palette);
+    if remote
+        && context_menu_item(
+            ui,
+            palette,
+            Icon::ShieldLock,
+            crate::i18n::tr(language, "chmod"),
+            "",
+            true,
+            false,
+        )
+    {
+        action.chmod = Some(entry.name.clone());
+        ui.close();
+    }
+    if context_menu_item(
+        ui,
+        palette,
+        Icon::ShieldLock,
+        crate::i18n::tr(language, "hash"),
+        "",
+        !entry.is_dir,
+        false,
+    ) {
+        action.hash = Some(entry.name.clone());
+        ui.close();
+    }
+    if context_menu_item(
+        ui,
+        palette,
+        Icon::Copy,
+        crate::i18n::tr(language, "copy_path"),
+        "",
+        true,
+        false,
+    ) {
+        ui.ctx().copy_text(join_path(directory, &entry.name));
+        ui.close();
+    }
+    context_menu_separator(ui, palette);
+    if context_menu_item(
+        ui,
+        palette,
+        Icon::Refresh,
+        crate::i18n::tr(language, "refresh"),
+        "",
+        true,
+        false,
+    ) {
+        action.refresh = true;
+        ui.close();
     }
 }
 
@@ -504,12 +739,16 @@ fn update_selection(
 
 fn paint_ellipsized(
     ui: &Ui,
-    pos: egui::Pos2,
-    max_width: f32,
+    rect: Rect,
     text: &str,
     font: FontId,
     color: egui::Color32,
+    right_aligned: bool,
 ) {
+    let max_width = rect.width().max(0.0);
+    if max_width < 1.0 {
+        return;
+    }
     let full = ui
         .painter()
         .layout_no_wrap(text.to_owned(), font.clone(), color);
@@ -537,8 +776,13 @@ fn paint_ellipsized(
         let candidate = format!("{}…", chars.iter().take(low).collect::<String>());
         ui.painter().layout_no_wrap(candidate, font, color)
     };
-    ui.painter().galley(
-        egui::pos2(pos.x, pos.y - galley.size().y / 2.0),
+    let x = if right_aligned {
+        rect.right() - galley.size().x
+    } else {
+        rect.left()
+    };
+    ui.painter().with_clip_rect(rect).galley(
+        egui::pos2(x, rect.center().y - galley.size().y / 2.0),
         galley,
         color,
     );
@@ -558,7 +802,7 @@ fn file_row(
         ui.allocate_exact_size(Vec2::new(width, height), Sense::click_and_drag());
     if selected {
         ui.painter()
-            .rect_filled(rect, CornerRadius::ZERO, palette.raised);
+            .rect_filled(rect, CornerRadius::ZERO, palette.selection);
         ui.painter().rect_filled(
             Rect::from_min_size(rect.min, Vec2::new(2.0, rect.height())),
             CornerRadius::ZERO,
@@ -593,8 +837,10 @@ fn file_row(
     );
     paint_ellipsized(
         ui,
-        egui::pos2(rect.left() + 23.0, rect.center().y),
-        (columns.name - 16.0).max(20.0),
+        Rect::from_min_max(
+            egui::pos2(rect.left() + 23.0, rect.top()),
+            egui::pos2(rect.left() + 7.0 + columns.name - 5.0, rect.bottom()),
+        ),
         &entry.name,
         FontId::proportional(13.0),
         if selected {
@@ -602,46 +848,63 @@ fn file_row(
         } else {
             palette.text
         },
+        false,
     );
     let mut x = rect.left() + 7.0 + columns.name;
     let mono = FontId::monospace(13.0);
     if remote {
         if columns.perm > 0.0 {
-            ui.painter().text(
-                egui::pos2(x, rect.center().y),
-                egui::Align2::LEFT_CENTER,
+            paint_ellipsized(
+                ui,
+                Rect::from_min_max(
+                    egui::pos2(x, rect.top()),
+                    egui::pos2(x + columns.perm - 5.0, rect.bottom()),
+                ),
                 &entry.perm,
                 mono.clone(),
                 palette.text_soft,
+                false,
             );
             x += columns.perm;
         }
         if columns.owner > 0.0 {
-            ui.painter().text(
-                egui::pos2(x, rect.center().y),
-                egui::Align2::LEFT_CENTER,
+            paint_ellipsized(
+                ui,
+                Rect::from_min_max(
+                    egui::pos2(x, rect.top()),
+                    egui::pos2(x + columns.owner - 5.0, rect.bottom()),
+                ),
                 &entry.owner,
                 mono.clone(),
                 palette.muted,
+                false,
             );
             x += columns.owner;
         }
     }
-    ui.painter().text(
-        egui::pos2(x + columns.size - 4.0, rect.center().y),
-        egui::Align2::RIGHT_CENTER,
-        entry.size_label(),
+    paint_ellipsized(
+        ui,
+        Rect::from_min_max(
+            egui::pos2(x, rect.top()),
+            egui::pos2(x + columns.size - 4.0, rect.bottom()),
+        ),
+        &entry.size_label(),
         mono.clone(),
         palette.muted,
+        true,
     );
     x += columns.size;
     if columns.date > 0.0 {
-        ui.painter().text(
-            egui::pos2(x + 4.0, rect.center().y),
-            egui::Align2::LEFT_CENTER,
+        paint_ellipsized(
+            ui,
+            Rect::from_min_max(
+                egui::pos2(x + 4.0, rect.top()),
+                egui::pos2(x + columns.date - 4.0, rect.bottom()),
+            ),
             &entry.modified,
             mono,
             palette.muted,
+            false,
         );
     }
     response

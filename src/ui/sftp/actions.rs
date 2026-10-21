@@ -36,7 +36,7 @@ pub(super) fn action_bar(
     let button_width = 92.0;
     let mut x = rect.right() - 8.0;
     for (label, action) in [
-        (app.t("md5"), 2),
+        (app.t("hash"), 2),
         (app.t("chmod"), 1),
         (app.t("edit_remote"), 0),
     ] {
@@ -131,29 +131,35 @@ pub(super) fn action_bar(
                 _ => {
                     if let Some(name) = tab.remote_selected.last().cloned() {
                         let path = join_path(&tab.remote_cwd, &name);
-                        app.md5_dialog = Some(crate::app::Md5Dialog {
+                        app.hash_dialog = Some(crate::app::HashDialog {
                             path: path.clone(),
-                            hash: "Calculating remote MD5…".to_owned(),
+                            hashes: None,
+                            copied: None,
                         });
-                        app.ssh.md5_remote(tab.id, path);
+                        app.ssh.hash_remote(tab.id, path);
                     } else if left_remote {
                         if let (Some(name), Some(session_id)) =
                             (tab.local_selected.last().cloned(), tab.left_session_id)
                         {
                             let path = join_path(&tab.local_cwd, &name);
-                            app.md5_dialog = Some(crate::app::Md5Dialog {
+                            app.hash_dialog = Some(crate::app::HashDialog {
                                 path: path.clone(),
-                                hash: "Calculating remote MD5…".to_owned(),
+                                hashes: None,
+                                copied: None,
                             });
-                            app.ssh.md5_remote(session_id, path);
+                            app.ssh.hash_remote(session_id, path);
                         } else {
                             app.toast(app.t("select_file_first"));
                         }
                     } else if let Some(name) = tab.local_selected.last().cloned() {
                         let path = crate::local_fs::join(&tab.local_cwd, &name);
-                        match crate::ssh::md5_local(&path) {
-                            Ok(hash) => {
-                                app.md5_dialog = Some(crate::app::Md5Dialog { path, hash });
+                        match crate::ssh::hash_local(&path) {
+                            Ok(hashes) => {
+                                app.hash_dialog = Some(crate::app::HashDialog {
+                                    path,
+                                    hashes: Some(hashes),
+                                    copied: None,
+                                });
                             }
                             Err(error) => app.log(crate::domain::LogLevel::Error, error),
                         }

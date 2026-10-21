@@ -71,7 +71,8 @@ impl ShellCoreApp {
             || self.command_history.is_some()
             || self.editor_dialog.is_some()
             || self.chmod_dialog.is_some()
-            || self.md5_dialog.is_some();
+            || self.hash_dialog.is_some()
+            || self.sftp_file_dialog.is_some();
         if self.tree_rename.is_some() || dialog_open {
             if ctx.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape)) {
                 if self.tree_rename.take().is_some() {
@@ -89,7 +90,8 @@ impl ShellCoreApp {
                 self.command_history = None;
                 self.editor_dialog = None;
                 self.chmod_dialog = None;
-                self.md5_dialog = None;
+                self.hash_dialog = None;
+                self.sftp_file_dialog = None;
                 return;
             }
         }
